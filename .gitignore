@@ -1,0 +1,52 @@
+# Python virtual environment
+env/
+venv/
+.myenv/
+ENV/
+*.pyc
+__pycache__/
+
+# Environment variables
+.env
+.env.*
+
+# Upload folders
+uploads/
+media/
+files/
+
+# macOS system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# VS Code settings
+.vscode/
+
+# Logs
+*.log
+
+# Python bytecode
+*.py[cod]
+
+# Coverage reports
+htmlcov/
+coverage.xml
+*.cover
+
+# Compiled C files
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Node modules (if you use Node.js)
+node_modules/

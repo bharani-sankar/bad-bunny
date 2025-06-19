@@ -1,0 +1,7 @@
+Flask==3.0.2
+gunicorn==21.2.0         # for production server
+python-dotenv==1.0.1     # for loading environment variables
+requests==2.32.3         # for making HTTP requests
+Jinja2==3.1.4            # template engine (Flask uses this)
+Werkzeug==3.0.2          # WSGI toolkit (used by Flask internally)
+itsdangerous==2.2.0      # used by Flask for session management
