@@ -1,0 +1,165 @@
+{
+    "suppliers": [
+        {
+            "id": 102,
+            "name": "Suresh Singh",
+            "contact": "9876543211",
+            "address": "Village B",
+            "shiftPreference": "Evening"
+        },
+        {
+            "name": "AJAY",
+            "contact": "9898975456",
+            "address": "Notchiyam",
+            "shiftPreference": "Both",
+            "id": 110
+        }
+    ],
+    "vendors": [
+        {
+            "id": 103,
+            "name": "Local Store A",
+            "contact": "9876543220",
+            "area": "Area 1",
+            "deliveryTime": "06:00"
+        },
+        {
+            "id": 104,
+            "name": "Local Store B",
+            "contact": "9876543221",
+            "area": "Area 2",
+            "deliveryTime": "07:00"
+        },
+        {
+            "name": "Pasumpaal pannai",
+            "contact": "8467524651",
+            "area": "KKT Complex, Keethukadai",
+            "deliveryTime": "06:00",
+            "id": 111
+        }
+    ],
+    "inwards": [
+        {
+            "id": 105,
+            "supplierId": 101,
+            "supplierName": "Raman Kumar",
+            "shift": "Morning",
+            "quantity": 50.0,
+            "fat": 3.5,
+            "snf": 8.2,
+            "microbialLoad": "Low",
+            "date": "2025-06-21"
+        },
+        {
+            "id": 106,
+            "supplierId": 102,
+            "supplierName": "Suresh Singh",
+            "shift": "Evening",
+            "quantity": 40.0,
+            "fat": 3.8,
+            "snf": 8.5,
+            "microbialLoad": "Low",
+            "date": "2025-06-21"
+        },
+        {
+            "supplierId": 110,
+            "shift": "Morning",
+            "quantity": 45.0,
+            "fat": 5.4,
+            "snf": 8.6,
+            "microbialLoad": "High",
+            "supplierName": "AJAY",
+            "date": "2025-06-21",
+            "id": 112
+        },
+        {
+            "supplierId": 110,
+            "shift": "Morning",
+            "quantity": 50.0,
+            "fat": 5.5,
+            "snf": 9.0,
+            "microbialLoad": "Low",
+            "supplierName": "AJAY",
+            "date": "2025-06-21",
+            "id": 118
+        }
+    ],
+    "outwards": [
+        {
+            "id": 107,
+            "vendorId": 103,
+            "vendorName": "Local Store A",
+            "shift": "Morning",
+            "quantity": 30.0,
+            "deliveryPerson": "Driver A",
+            "date": "2025-06-21",
+            "returnedQuantity": 15.0,
+            "salesQuantity": 15.0,
+            "status": "Completed"
+        },
+        {
+            "id": 108,
+            "vendorId": 104,
+            "vendorName": "Local Store B",
+            "shift": "Evening",
+            "quantity": 20.0,
+            "deliveryPerson": "Driver B",
+            "date": "2025-06-21",
+            "returnedQuantity": 0.0,
+            "salesQuantity": 20.0,
+            "status": "Completed"
+        },
+        {
+            "vendorId": 111,
+            "shift": "Evening",
+            "quantity": 55.0,
+            "deliveryPerson": "Pandi",
+            "vendorName": "Pasumpaal pannai",
+            "date": "2025-06-21",
+            "id": 113,
+            "returnedQuantity": 10.0,
+            "salesQuantity": 45.0,
+            "status": "Completed"
+        },
+        {
+            "vendorId": 111,
+            "shift": "Evening",
+            "quantity": 40.0,
+            "deliveryPerson": "Vijay",
+            "vendorName": "Pasumpaal pannai",
+            "date": "2025-06-21",
+            "id": 116,
+            "returnedQuantity": 10.0,
+            "salesQuantity": 30.0,
+            "status": "Completed"
+        }
+    ],
+    "returns": [
+        {
+            "outwardEntryId": 107,
+            "vendorName": "Local Store A",
+            "quantity": 15,
+            "date": "2025-06-21",
+            "time": "07:00 pm",
+            "id": 114
+        },
+        {
+            "outwardEntryId": 113,
+            "vendorName": "Pasumpaal pannai",
+            "quantity": 10,
+            "date": "2025-06-21",
+            "time": "07:01 pm",
+            "id": 115
+        },
+        {
+            "outwardEntryId": 116,
+            "vendorName": "Pasumpaal pannai",
+            "quantity": 10,
+            "date": "2025-06-21",
+            "time": "07:03 pm",
+            "id": 117
+        }
+    ],
+    "paneer_redirects": [],
+    "_current_id": 118
+}

@@ -5,6 +5,7 @@ venv/
 ENV/
 *.pyc
 __pycache__/
+*.sock
 
 # Environment variables
 .env
