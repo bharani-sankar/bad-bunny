@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template, session, redirect, u
 from flask_cors import CORS
 import json
 import os
+from dotenv import load_dotenv
 from datetime import datetime
 import secrets
 
@@ -10,7 +11,7 @@ from auth import AuthManager, setup_auth_routes, login_required
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes, allowing your React app to connect
-
+load_dotenv()
 # Set a secret key for sessions (use environment variable in production)
 app.secret_key = secrets.token_hex(32)
 API_PREFIX = os.getenv('API_PREFIX', '')
@@ -78,6 +79,7 @@ def home():
         return redirect(url_for('dashboard'))
     
     print("Serving index.html")
+    print("URL",API_PREFIX)
     return render_template("index.html", api_prefix=API_PREFIX)
 
 # Dashboard route is already defined in auth.py setup_auth_routes function
