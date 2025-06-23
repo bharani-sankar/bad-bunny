@@ -11,6 +11,7 @@ __pycache__/
 .env
 .env.*
 data.json
+credentials.json
 
 # Upload folders
 uploads/
