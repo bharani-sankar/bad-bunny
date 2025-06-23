@@ -81,6 +81,12 @@ def home():
     print("Serving index.html")
     return render_template("index.html", api_prefix=API_PREFIX)
 
+@app.route('/dashboard')
+@login_required(auth_manager)
+def dashboard(user):
+    """Dashboard page - requires authentication"""
+    return render_template('dashboard.html', user=user, api_prefix=API_PREFIX)
+
 # Dashboard route is already defined in auth.py setup_auth_routes function
 @app.route('/api/suppliers', methods=['GET'])
 def get_suppliers():
