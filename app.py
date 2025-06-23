@@ -79,7 +79,6 @@ def home():
         return redirect(url_for('dashboard'))
     
     print("Serving index.html")
-    print("URL",API_PREFIX)
     return render_template("index.html", api_prefix=API_PREFIX)
 
 # Dashboard route is already defined in auth.py setup_auth_routes function

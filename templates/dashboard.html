@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dairy Management Dashboard</title>
+    <title>Milk Management Dashboard</title>
     <style>
       * {
         margin: 0;
@@ -13,401 +13,823 @@
 
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
       }
 
-      .header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1rem 2rem;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      .dashboard-container {
+        display: flex;
+        min-height: 100vh;
       }
 
-      .header-content {
+      .sidebar {
+        width: 250px;
+        background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        color: white;
+        position: fixed;
+        height: 100vh;
+        overflow-y: auto;
+      }
+
+      .sidebar-header {
+        padding: 20px;
+        text-align: center;
+        border-bottom: 1px solid #34495e;
+      }
+
+      .sidebar-header h2 {
+        color: #3498db;
+        margin-bottom: 5px;
+      }
+
+      .sidebar-header p {
+        color: #bdc3c7;
+        font-size: 12px;
+      }
+
+      .sidebar-menu {
+        padding: 20px 0;
+      }
+
+      .menu-item {
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+        display: flex;
+        align-items: center;
+      }
+
+      .menu-item:hover {
+        background: rgba(52, 73, 94, 0.8);
+        border-left-color: #3498db;
+      }
+
+      .menu-item.active {
+        background: rgba(52, 152, 219, 0.2);
+        border-left-color: #3498db;
+      }
+
+      .menu-item i {
+        margin-right: 10px;
+        width: 20px;
+      }
+
+      .main-content {
+        flex: 1;
+        margin-left: 250px;
+        padding: 20px;
+      }
+
+      .header {
+        background: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        max-width: 1200px;
-        margin: 0 auto;
       }
 
-      .logo h1 {
-        font-size: 24px;
-        font-weight: 700;
+      .welcome-text h1 {
+        color: #2c3e50;
+        margin-bottom: 5px;
+      }
+
+      .welcome-text p {
+        color: #7f8c8d;
       }
 
       .user-info {
         display: flex;
         align-items: center;
-        gap: 1rem;
-      }
-
-      .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 16px;
+        gap: 15px;
       }
 
       .logout-btn {
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: linear-gradient(45deg, #e74c3c, #c0392b);
         color: white;
-        padding: 8px 16px;
-        border-radius: 8px;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
         cursor: pointer;
-        font-size: 14px;
         transition: all 0.3s ease;
+        font-weight: bold;
       }
 
       .logout-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-1px);
-      }
-
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 2rem;
-      }
-
-      .welcome-section {
-        background: white;
-        border-radius: 15px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-      }
-
-      .welcome-section h2 {
-        color: #333;
-        margin-bottom: 0.5rem;
-        font-size: 28px;
-      }
-
-      .welcome-section p {
-        color: #666;
-        font-size: 16px;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
       }
 
       .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+        gap: 20px;
+        margin-bottom: 30px;
       }
 
       .stat-card {
         background: white;
+        padding: 25px;
         border-radius: 15px;
-        padding: 1.5rem;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border-left: 4px solid;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transition: all 0.3s ease;
+        border-top: 4px solid transparent;
       }
 
       .stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
       }
 
       .stat-card.suppliers {
-        border-left-color: #667eea;
+        border-top-color: #3498db;
       }
-      .stat-card.products {
-        border-left-color: #764ba2;
+      .stat-card.vendors {
+        border-top-color: #2ecc71;
       }
-      .stat-card.orders {
-        border-left-color: #f093fb;
+      .stat-card.inwards {
+        border-top-color: #f39c12;
       }
-      .stat-card.revenue {
-        border-left-color: #4facfe;
+      .stat-card.outwards {
+        border-top-color: #e74c3c;
       }
-
-      .stat-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin-bottom: 1rem;
+      .stat-card.returns {
+        border-top-color: #9b59b6;
       }
-      .stat-card.suppliers .stat-icon {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
-      }
-      .stat-card.products .stat-icon {
-        background: rgba(118, 75, 162, 0.1);
-        color: #764ba2;
-      }
-      .stat-card.orders .stat-icon {
-        background: rgba(240, 147, 251, 0.1);
-        color: #f093fb;
-      }
-      .stat-card.revenue .stat-icon {
-        background: rgba(79, 172, 254, 0.1);
-        color: #4facfe;
+      .stat-card.stock {
+        border-top-color: #1abc9c;
       }
 
-      .stat-number {
-        font-size: 32px;
-        font-weight: 700;
-        color: #333;
-        margin-bottom: 0.5rem;
-      }
-      .stat-label {
-        color: #666;
+      .stat-card h3 {
+        color: #2c3e50;
+        margin-bottom: 10px;
         font-size: 14px;
-        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
       }
 
-      .quick-actions {
+      .stat-card .number {
+        font-size: 36px;
+        font-weight: bold;
+        margin: 10px 0;
+      }
+
+      .stat-card .unit {
+        color: #7f8c8d;
+        font-size: 14px;
+      }
+
+      .suppliers .number {
+        color: #3498db;
+      }
+      .vendors .number {
+        color: #2ecc71;
+      }
+      .inwards .number {
+        color: #f39c12;
+      }
+      .outwards .number {
+        color: #e74c3c;
+      }
+      .returns .number {
+        color: #9b59b6;
+      }
+      .stock .number {
+        color: #1abc9c;
+      }
+
+      .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+
+      .chart-container {
         background: white;
+        padding: 25px;
         border-radius: 15px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
       }
-      .quick-actions h3 {
-        color: #333;
-        margin-bottom: 1.5rem;
-        font-size: 22px;
+
+      .chart-title {
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-size: 18px;
+        font-weight: bold;
       }
-      .actions-grid {
+
+      .pricing-card {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        grid-column: 1 / -1;
+      }
+
+      .pricing-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
+        gap: 20px;
+        margin-top: 20px;
       }
-      .action-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 1rem 1.5rem;
+
+      .price-item {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        text-decoration: none;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        font-weight: 500;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
       }
-      .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+
+      .price-item h4 {
+        margin-bottom: 10px;
       }
-      .action-icon {
-        font-size: 20px;
+
+      .price-item .price {
+        font-size: 24px;
+        font-weight: bold;
       }
 
       .recent-activity {
         background: white;
+        padding: 25px;
         border-radius: 15px;
-        padding: 2rem;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        grid-column: 1 / -1;
       }
-      .recent-activity h3 {
-        color: #333;
-        margin-bottom: 1.5rem;
-        font-size: 22px;
-      }
-      .activity-list {
-        list-style: none;
-      }
+
       .activity-item {
+        padding: 15px 0;
+        border-bottom: 1px solid #ecf0f1;
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 1rem;
-        padding: 1rem 0;
-        border-bottom: 1px solid #f0f0f0;
       }
+
       .activity-item:last-child {
         border-bottom: none;
       }
-      .activity-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
-      }
-      .activity-content {
-        flex: 1;
-      }
+
       .activity-text {
-        color: #333;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
+        color: #2c3e50;
       }
+
       .activity-time {
-        color: #666;
+        color: #7f8c8d;
         font-size: 12px;
       }
 
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+        color: #7f8c8d;
+      }
+
       @media (max-width: 768px) {
-        .header-content {
-          flex-direction: column;
-          gap: 1rem;
+        .sidebar {
+          width: 70px;
         }
-        .container {
-          padding: 1rem;
+
+        .sidebar-header h2,
+        .sidebar-header p,
+        .menu-item span {
+          display: none;
         }
-        .stats-grid {
-          grid-template-columns: 1fr;
+
+        .main-content {
+          margin-left: 70px;
         }
-        .actions-grid {
+
+        .content-grid {
           grid-template-columns: 1fr;
         }
       }
     </style>
   </head>
-  <body onload="loadDashboardData()">
-    <header class="header">
-      <div class="header-content">
-        <div class="logo">
-          <h1>🥛 Dairy Management System</h1>
+  <body>
+    <div class="dashboard-container">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>🥛 Milk Manager</h2>
+          <p>Admin Dashboard</p>
         </div>
-        <div class="user-info">
-          <div class="user-avatar">U</div>
-          <span>Welcome, User!</span>
-          <button class="logout-btn" onclick="logout()">Logout</button>
-        </div>
-      </div>
-    </header>
-
-    <div class="container">
-      <div class="welcome-section">
-        <h2>Dashboard Overview</h2>
-        <p>
-          Manage your dairy operations efficiently with real-time insights and
-          quick actions.
-        </p>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card suppliers">
-          <div class="stat-icon">👥</div>
-          <div class="stat-number" id="suppliersCount">0</div>
-          <div class="stat-label">Total Suppliers</div>
-        </div>
-        <div class="stat-card products">
-          <div class="stat-icon">🥛</div>
-          <div class="stat-number" id="productsCount">0</div>
-          <div class="stat-label">Products</div>
-        </div>
-        <div class="stat-card orders">
-          <div class="stat-icon">📦</div>
-          <div class="stat-number" id="ordersCount">0</div>
-          <div class="stat-label">Today's Orders</div>
-        </div>
-        <div class="stat-card revenue">
-          <div class="stat-icon">💰</div>
-          <div class="stat-number" id="revenue">₹0</div>
-          <div class="stat-label">Today's Revenue</div>
-        </div>
+        <nav class="sidebar-menu">
+          <div class="menu-item active">
+            <i>📊</i>
+            <span>Dashboard</span>
+          </div>
+          <div class="menu-item">
+            <i>👥</i>
+            <span>Suppliers</span>
+          </div>
+          <div class="menu-item">
+            <i>🏪</i>
+            <span>Vendors</span>
+          </div>
+          <div class="menu-item">
+            <i>📥</i>
+            <span>Inwards</span>
+          </div>
+          <div class="menu-item">
+            <i>📤</i>
+            <span>Outwards</span>
+          </div>
+          <div class="menu-item">
+            <i>↩️</i>
+            <span>Returns</span>
+          </div>
+          <div class="menu-item">
+            <i>🧀</i>
+            <span>Paneer Redirects</span>
+          </div>
+          <div class="menu-item">
+            <i>📈</i>
+            <span>Reports</span>
+          </div>
+        </nav>
       </div>
 
-      <div class="quick-actions">
-        <h3>Quick Actions</h3>
-        <div class="actions-grid">
-          <a href="/suppliers" class="action-btn">
-            <span class="action-icon">👥</span>
-            Manage Suppliers
-          </a>
-          <a href="/products" class="action-btn">
-            <span class="action-icon">🥛</span>
-            Manage Products
-          </a>
-          <a href="/orders" class="action-btn">
-            <span class="action-icon">📦</span>
-            View Orders
-          </a>
-          <a href="/reports" class="action-btn">
-            <span class="action-icon">📊</span>
-            Generate Reports
-          </a>
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+          <div class="welcome-text">
+            <h1>Welcome, <span id="username">Admin</span>!</h1>
+            <p>Here's your milk business overview for today</p>
+          </div>
+          <div class="user-info">
+            <span id="current-date"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+          </div>
         </div>
-      </div>
 
-      <div class="recent-activity">
-        <h3>Recent Activity</h3>
-        <ul class="activity-list" id="activityList">
-          <li class="activity-item">
-            <div class="activity-icon">👥</div>
-            <div class="activity-content">
-              <div class="activity-text">New supplier added</div>
-              <div class="activity-time">2 hours ago</div>
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card suppliers">
+            <h3>Total Suppliers</h3>
+            <div class="number" id="suppliers-count">-</div>
+            <div class="unit">Active</div>
+          </div>
+          <div class="stat-card vendors">
+            <h3>Total Vendors</h3>
+            <div class="number" id="vendors-count">-</div>
+            <div class="unit">Active</div>
+          </div>
+          <div class="stat-card inwards">
+            <h3>Today's Inward</h3>
+            <div class="number" id="inwards-quantity">-</div>
+            <div class="unit">Liters</div>
+          </div>
+          <div class="stat-card outwards">
+            <h3>Today's Outward</h3>
+            <div class="number" id="outwards-quantity">-</div>
+            <div class="unit">Liters</div>
+          </div>
+          <div class="stat-card returns">
+            <h3>Today's Returns</h3>
+            <div class="number" id="returns-quantity">-</div>
+            <div class="unit">Liters</div>
+          </div>
+          <div class="stat-card stock">
+            <h3>Current Stock</h3>
+            <div class="number" id="current-stock">-</div>
+            <div class="unit">Liters</div>
+          </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+          <!-- Financial Overview -->
+          <div class="chart-container">
+            <div class="chart-title">💰 Today's Financial Summary</div>
+            <div id="financial-summary">
+              <div style="margin-bottom: 15px">
+                <strong>Inward Cost:</strong> ₹<span id="inward-cost">0</span>
+              </div>
+              <div style="margin-bottom: 15px">
+                <strong>Outward Revenue:</strong> ₹<span id="outward-revenue"
+                  >0</span
+                >
+              </div>
+              <div style="margin-bottom: 15px">
+                <strong>Paneer Revenue:</strong> ₹<span id="paneer-revenue"
+                  >0</span
+                >
+              </div>
+              <div style="font-size: 18px; font-weight: bold; color: #27ae60">
+                <strong>Net Profit:</strong> ₹<span id="net-profit">0</span>
+              </div>
             </div>
-          </li>
-          <li class="activity-item">
-            <div class="activity-icon">📦</div>
-            <div class="activity-content">
-              <div class="activity-text">Order #12345 completed</div>
-              <div class="activity-time">4 hours ago</div>
+          </div>
+
+          <!-- Quality Metrics -->
+          <div class="chart-container">
+            <div class="chart-title">🧪 Average Quality Metrics</div>
+            <div id="quality-metrics">
+              <div style="margin-bottom: 15px">
+                <strong>Average Fat:</strong> <span id="avg-fat">0</span>%
+              </div>
+              <div style="margin-bottom: 15px">
+                <strong>Average SNF:</strong> <span id="avg-snf">0</span>%
+              </div>
+              <div style="margin-bottom: 15px">
+                <strong>Total Entries:</strong>
+                <span id="total-inward-entries">0</span>
+              </div>
             </div>
-          </li>
-          <li class="activity-item">
-            <div class="activity-icon">🥛</div>
-            <div class="activity-content">
-              <div class="activity-text">New product added to inventory</div>
-              <div class="activity-time">6 hours ago</div>
+          </div>
+        </div>
+
+        <!-- Pricing Information -->
+        <div class="pricing-card">
+          <div class="chart-title">💵 Current Pricing Structure</div>
+          <div class="pricing-grid">
+            <div class="price-item">
+              <h4>Supplier Rate</h4>
+              <div class="price">₹35/L</div>
             </div>
-          </li>
-        </ul>
+            <div class="price-item">
+              <h4>Vendor Rate</h4>
+              <div class="price">₹40/L</div>
+            </div>
+            <div class="price-item">
+              <h4>Paneer Factory Rate</h4>
+              <div class="price">₹38/L</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="recent-activity">
+          <div class="chart-title">📋 Recent Activity</div>
+          <div id="recent-activities">
+            <div class="loading">Loading recent activities...</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <script>
-      // Load dashboard data
+      // API Configuration
+      const API_BASE = "";
+
+      // Current user data
+      let currentUser = null;
+
+      // Initialize dashboard
+      document.addEventListener("DOMContentLoaded", function () {
+        checkAuthentication();
+        setCurrentDate();
+        loadDashboardData();
+      });
+
+      // Check if user is authenticated
+      async function checkAuthentication() {
+        try {
+          const response = await fetch("/api/check-auth");
+          const data = await response.json();
+
+          if (data.authenticated) {
+            currentUser = data.user;
+            document.getElementById("username").textContent = data.user.name;
+          } else {
+            window.location.href = "/";
+          }
+        } catch (error) {
+          console.error("Auth check failed:", error);
+          window.location.href = "/";
+        }
+      }
+
+      // Set current date
+      function setCurrentDate() {
+        const now = new Date();
+        const options = {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        };
+        document.getElementById("current-date").textContent =
+          now.toLocaleDateString("en-US", options);
+      }
+
+      // Load all dashboard data
       async function loadDashboardData() {
         try {
-          const suppliersResponse = await fetch("/api/suppliers");
-          if (!suppliersResponse.ok) throw new Error("API error");
+          await Promise.all([
+            loadSuppliers(),
+            loadVendors(),
+            loadInwards(),
+            loadOutwards(),
+            loadReturns(),
+            loadPaneerRedirects(),
+          ]);
 
-          const suppliers = await suppliersResponse.json();
-          document.getElementById("suppliersCount").textContent =
-            suppliers.length;
+          calculateFinancials();
+          calculateQualityMetrics();
+          generateRecentActivities();
         } catch (error) {
-          console.warn("Could not fetch suppliers:", error);
-          document.getElementById("suppliersCount").textContent = "N/A";
+          console.error("Error loading dashboard data:", error);
         }
-
-        document.getElementById("productsCount").textContent = "25";
-        document.getElementById("ordersCount").textContent = "12";
-        document.getElementById("revenue").textContent = "₹15,230";
       }
 
-      function logout() {
-        if (confirm("Are you sure you want to logout?")) {
-          fetch("/api/logout", {
-            method: "POST",
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.message === "Logged out successfully") {
-                window.location.href = "/";
-              } else {
-                alert("Logout failed: " + data.error);
-              }
-            })
-            .catch(() => {
-              alert("Network error during logout.");
+      // Data storage
+      let dashboardData = {
+        suppliers: [],
+        vendors: [],
+        inwards: [],
+        outwards: [],
+        returns: [],
+        paneerRedirects: [],
+      };
+
+      // Load suppliers
+      async function loadSuppliers() {
+        try {
+          const response = await fetch("/suppliers");
+          dashboardData.suppliers = await response.json();
+          document.getElementById("suppliers-count").textContent =
+            dashboardData.suppliers.length;
+        } catch (error) {
+          console.error("Error loading suppliers:", error);
+        }
+      }
+
+      // Load vendors
+      async function loadVendors() {
+        try {
+          const response = await fetch("/vendors");
+          dashboardData.vendors = await response.json();
+          document.getElementById("vendors-count").textContent =
+            dashboardData.vendors.length;
+        } catch (error) {
+          console.error("Error loading vendors:", error);
+        }
+      }
+
+      // Load inwards
+      async function loadInwards() {
+        try {
+          const response = await fetch("/inwards");
+          dashboardData.inwards = await response.json();
+
+          const today = new Date().toISOString().split("T")[0];
+          const todayInwards = dashboardData.inwards.filter(
+            (item) => item.date === today
+          );
+          const totalQuantity = todayInwards.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+
+          document.getElementById("inwards-quantity").textContent =
+            totalQuantity.toFixed(1);
+        } catch (error) {
+          console.error("Error loading inwards:", error);
+        }
+      }
+
+      // Load outwards
+      async function loadOutwards() {
+        try {
+          const response = await fetch("/outwards");
+          dashboardData.outwards = await response.json();
+
+          const today = new Date().toISOString().split("T")[0];
+          const todayOutwards = dashboardData.outwards.filter(
+            (item) => item.date === today
+          );
+          const totalQuantity = todayOutwards.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+
+          document.getElementById("outwards-quantity").textContent =
+            totalQuantity.toFixed(1);
+        } catch (error) {
+          console.error("Error loading outwards:", error);
+        }
+      }
+
+      // Load returns
+      async function loadReturns() {
+        try {
+          const response = await fetch("/returns");
+          dashboardData.returns = await response.json();
+
+          const today = new Date().toISOString().split("T")[0];
+          const todayReturns = dashboardData.returns.filter(
+            (item) => item.date === today
+          );
+          const totalQuantity = todayReturns.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+
+          document.getElementById("returns-quantity").textContent =
+            totalQuantity.toFixed(1);
+        } catch (error) {
+          console.error("Error loading returns:", error);
+        }
+      }
+
+      // Load paneer redirects
+      async function loadPaneerRedirects() {
+        try {
+          const response = await fetch("/paneer-redirects");
+          dashboardData.paneerRedirects = await response.json();
+        } catch (error) {
+          console.error("Error loading paneer redirects:", error);
+        }
+      }
+
+      // Calculate current stock and financial metrics
+      function calculateFinancials() {
+        const today = new Date().toISOString().split("T")[0];
+
+        // Today's data
+        const todayInwards = dashboardData.inwards.filter(
+          (item) => item.date === today
+        );
+        const todayOutwards = dashboardData.outwards.filter(
+          (item) => item.date === today
+        );
+        const todayPaneer = dashboardData.paneerRedirects.filter(
+          (item) => item.date === today
+        );
+        const todayReturns = dashboardData.returns.filter(
+          (item) => item.date === today
+        );
+
+        // Calculate quantities
+        const totalInward = todayInwards.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+        const totalOutward = todayOutwards.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+        const totalPaneer = todayPaneer.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+        const totalReturns = todayReturns.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+
+        // Calculate stock (inward - outward - paneer + returns)
+        const currentStock =
+          totalInward - totalOutward - totalPaneer + totalReturns;
+        document.getElementById("current-stock").textContent =
+          currentStock.toFixed(1);
+
+        // Calculate financial metrics
+        const inwardCost = totalInward * 35; // ₹35 per liter from suppliers
+        const outwardRevenue = (totalOutward - totalReturns) * 40; // ₹40 per liter to vendors
+        const paneerRevenue = totalPaneer * 38; // ₹38 per liter to paneer factory
+        const netProfit = outwardRevenue + paneerRevenue - inwardCost;
+
+        document.getElementById("inward-cost").textContent =
+          inwardCost.toFixed(0);
+        document.getElementById("outward-revenue").textContent =
+          outwardRevenue.toFixed(0);
+        document.getElementById("paneer-revenue").textContent =
+          paneerRevenue.toFixed(0);
+        document.getElementById("net-profit").textContent =
+          netProfit.toFixed(0);
+      }
+
+      // Calculate quality metrics
+      function calculateQualityMetrics() {
+        const today = new Date().toISOString().split("T")[0];
+        const todayInwards = dashboardData.inwards.filter(
+          (item) => item.date === today
+        );
+
+        if (todayInwards.length > 0) {
+          const avgFat =
+            todayInwards.reduce((sum, item) => sum + item.fat, 0) /
+            todayInwards.length;
+          const avgSnf =
+            todayInwards.reduce((sum, item) => sum + item.snf, 0) /
+            todayInwards.length;
+
+          document.getElementById("avg-fat").textContent = avgFat.toFixed(2);
+          document.getElementById("avg-snf").textContent = avgSnf.toFixed(2);
+          document.getElementById("total-inward-entries").textContent =
+            todayInwards.length;
+        }
+      }
+
+      // Generate recent activities
+      function generateRecentActivities() {
+        const activities = [];
+        const today = new Date().toISOString().split("T")[0];
+
+        // Add recent inwards
+        dashboardData.inwards
+          .filter((item) => item.date === today)
+          .forEach((item) => {
+            activities.push({
+              text: `Milk received from ${item.supplierName} - ${item.quantity}L`,
+              time: item.created_at
+                ? new Date(item.created_at).toLocaleTimeString()
+                : "Today",
+              type: "inward",
             });
+          });
+
+        // Add recent outwards
+        dashboardData.outwards
+          .filter((item) => item.date === today)
+          .forEach((item) => {
+            activities.push({
+              text: `Milk delivered to ${item.vendorName} - ${item.quantity}L`,
+              time: item.created_at
+                ? new Date(item.created_at).toLocaleTimeString()
+                : "Today",
+              type: "outward",
+            });
+          });
+
+        // Add recent returns
+        dashboardData.returns
+          .filter((item) => item.date === today)
+          .forEach((item) => {
+            activities.push({
+              text: `Milk returned from ${item.vendorName} - ${item.quantity}L`,
+              time: item.created_at
+                ? new Date(item.created_at).toLocaleTimeString()
+                : "Today",
+              type: "return",
+            });
+          });
+
+        // Sort by time and show latest 10
+        activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+        const recentActivities = activities.slice(0, 10);
+
+        const activitiesContainer =
+          document.getElementById("recent-activities");
+        if (recentActivities.length > 0) {
+          activitiesContainer.innerHTML = recentActivities
+            .map(
+              (activity) => `
+                    <div class="activity-item">
+                        <div class="activity-text">${activity.text}</div>
+                        <div class="activity-time">${activity.time}</div>
+                    </div>
+                `
+            )
+            .join("");
+        } else {
+          activitiesContainer.innerHTML =
+            '<div class="activity-item"><div class="activity-text">No recent activities for today</div></div>';
         }
       }
 
-      // Load data when page loads
-      document.addEventListener("DOMContentLoaded", loadDashboardData);
+      // Logout function
+      async function logout() {
+        try {
+          const response = await fetch("/api/logout", { method: "POST" });
+          if (response.ok) {
+            window.location.href = "/";
+          }
+        } catch (error) {
+          console.error("Logout failed:", error);
+          // Force redirect even if logout fails
+          window.location.href = "/";
+        }
+      }
+
+      // Menu item click handlers (for future implementation)
+      document.querySelectorAll(".menu-item").forEach((item) => {
+        item.addEventListener("click", function () {
+          document
+            .querySelectorAll(".menu-item")
+            .forEach((i) => i.classList.remove("active"));
+          this.classList.add("active");
+
+          // Here you can add navigation logic for different sections
+          const section = this.textContent.trim().toLowerCase();
+          console.log("Navigate to:", section);
+        });
+      });
+
+      // Auto-refresh dashboard every 5 minutes
+      setInterval(loadDashboardData, 5 * 60 * 1000);
     </script>
   </body>
 </html>
