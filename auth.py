@@ -261,6 +261,7 @@ def setup_auth_routes(app, auth_manager, api_prefix):
                 return jsonify({'error': message}), 400
                 
         except Exception as e:
+            print(f"!!! SIGNUP API ERROR: {e}")  # <-- ADD THIS LINE
             return jsonify({'error': 'Internal server error'}), 500
     
     @app.route('/api/login', methods=['POST'])
