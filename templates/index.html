@@ -450,7 +450,7 @@
                   showSuccess("Login successful! Redirecting...");
                   setTimeout(() => {
                     // THIS LINE IS NOW CORRECT
-                    window.location.href = `${API_BASE_PATH}/api/dashboard`;
+                    window.location.href = `${API_BASE_PATH}/dashboard`;
                   }, 2500);
                 } else {
                   const error = await response.json();
@@ -525,7 +525,7 @@
                 showSuccess("Google sign in successful! Redirecting...");
                 setTimeout(() => {
                     // THIS REDIRECT IS NOW CORRECT
-                    window.location.href = `${API_BASE_PATH}/api/dashboard`;
+                    window.location.href = `${API_BASE_PATH}/dashboard`;
                 }, 1500);
             } else {
                 showError(data.error || "Google Sign-In failed.");

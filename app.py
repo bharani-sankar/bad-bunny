@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes, allowing your React app to connect
 load_dotenv()
 # Set a secret key for sessions (use environment variable in production)
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.getenv('SECRET_KEY')
 API_PREFIX = os.getenv('API_PREFIX', '')
 DATA_FILE = 'data.json'  # Define the JSON file name
 
@@ -76,12 +76,12 @@ def home():
     """Main page - show login if not authenticated, redirect to dashboard if authenticated"""
     user = auth_manager.get_current_user_from_session()
     if user:
-        return redirect(url_for('/api/dashboard'))
+        return redirect(url_for('dashboard'))
     
     print("Serving index.html")
     return render_template("index.html", api_prefix=API_PREFIX)
 
-@app.route('/api/dashboard')
+@app.route('/dashboard')
 @login_required(auth_manager)
 def dashboard(user):
     """Dashboard page - requires authentication"""
