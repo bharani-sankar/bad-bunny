@@ -76,10 +76,11 @@ def home():
     """Main page - show login if not authenticated, redirect to dashboard if authenticated"""
     user = auth_manager.get_current_user_from_session()
     if user:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('/api/dashboard'))
     
     print("Serving index.html")
     return render_template("index.html", api_prefix=API_PREFIX)
+
 
 # Dashboard route is already defined in auth.py setup_auth_routes function
 @app.route('/api/suppliers', methods=['GET'])
