@@ -487,26 +487,30 @@
 
       // Initialize dashboard
       document.addEventListener("DOMContentLoaded", function () {
+        // We only call checkAuthentication first.
+        // The other functions will be called by it upon success.
         checkAuthentication();
-        setCurrentDate();
-        loadDashboardData();
       });
 
       // Check if user is authenticated
       async function checkAuthentication() {
         try {
-          const response = await fetch("/api/check-auth");
+          const response = await fetch(`${API_BASE_PATH}/api/check-auth`);
           const data = await response.json();
 
           if (data.authenticated) {
             currentUser = data.user;
             document.getElementById("username").textContent = data.user.name;
+            // NOW that we know the user is authenticated, load the data.
+            setCurrentDate();
+            loadDashboardData();
           } else {
-            window.location.href = "/";
+            // If not authenticated, redirect to the login page
+            window.location.href = `${API_BASE_PATH}/`;
           }
         } catch (error) {
           console.error("Auth check failed:", error);
-          window.location.href = "/";
+          window.location.href = `${API_BASE_PATH}/`;
         }
       }
 
@@ -803,14 +807,18 @@
       // Logout function
       async function logout() {
         try {
-          const response = await fetch("/api/logout", { method: "POST" });
+          // CORRECTED DYNAMIC URL
+          const response = await fetch(`${API_BASE_PATH}/api/logout`, {
+            method: "POST",
+          });
           if (response.ok) {
-            window.location.href = "/";
+            // CORRECTED DYNAMIC REDIRECT
+            window.location.href = `${API_BASE_PATH}/`;
           }
         } catch (error) {
           console.error("Logout failed:", error);
-          // Force redirect even if logout fails
-          window.location.href = "/";
+          // CORRECTED DYNAMIC REDIRECT
+          window.location.href = `${API_BASE_PATH}/`;
         }
       }
 
