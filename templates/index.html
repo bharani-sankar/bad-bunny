@@ -451,7 +451,7 @@
                   setTimeout(() => {
                     // THIS LINE IS NOW CORRECT
                     window.location.href = `${API_BASE_PATH}/api/dashboard`;
-                  }, 500);
+                  }, 2500);
                 } else {
                   const error = await response.json();
                   showError(error.message || "Login failed. Please try again.");
