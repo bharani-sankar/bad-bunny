@@ -228,7 +228,7 @@ def login_required(auth_manager):
         return decorated_function
     return decorator
 
-def setup_auth_routes(app, auth_manager):
+def setup_auth_routes(app, auth_manager, api_prefix):
     """Setup authentication routes"""
     
     @app.route('/api/signup', methods=['POST'])
@@ -383,6 +383,6 @@ def setup_auth_routes(app, auth_manager):
     @login_required(auth_manager)
     def dashboard(user):
         """Dashboard page - requires authentication"""
-        return render_template('dashboard.html', user=user)
+        return render_template('dashboard.html', user=user, api_prefix=api_prefix)
     
     return auth_manager
