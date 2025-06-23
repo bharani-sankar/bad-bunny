@@ -218,24 +218,12 @@ def login_required(auth_manager):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            print("--- DEBUG: Entering @login_required for a page. ---")
-            
-            # Check the raw cookie from the browser
-            token_from_session = session.get('auth_token')
-            print(f"--- DEBUG: Token from session cookie: {token_from_session} ---")
-            
-            # Now, try to get the user from that token
             user = auth_manager.get_current_user_from_session()
-            print(f"--- DEBUG: User found from token: {user} ---")
-            
             if not user:
-                print("--- DEBUG: No valid user found. Redirecting to home page. ---")
                 if request.is_json:
                     return jsonify({'error': 'Authentication required'}), 401
                 else:
                     return redirect(url_for('home'))
-            
-            print("--- DEBUG: User is valid. Proceeding to protected page. ---")
             return f(user, *args, **kwargs)
         return decorated_function
     return decorator
