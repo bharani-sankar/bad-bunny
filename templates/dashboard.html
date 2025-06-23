@@ -479,361 +479,362 @@
     </div>
 
     <script>
-      // API Configuration
-      const API_BASE = "";
+        // API Configuration
+        const API_BASE_PATH = {{ api_prefix | tojson }};
 
-      // Current user data
-      let currentUser = null;
+        // Current user data
+        let currentUser = null;
 
-      // Initialize dashboard
-      document.addEventListener("DOMContentLoaded", function () {
-        // We only call checkAuthentication first.
-        // The other functions will be called by it upon success.
-        checkAuthentication();
-      });
+        // Initialize dashboard
+        document.addEventListener("DOMContentLoaded", function () {
+          // We only call checkAuthentication first.
+          // The other functions will be called by it upon success.
+          checkAuthentication();
+        });
 
-      // Check if user is authenticated
-      async function checkAuthentication() {
-        try {
-          const response = await fetch(`${API_BASE_PATH}/api/check-auth`);
-          const data = await response.json();
+        // Check if user is authenticated
+        async function checkAuthentication() {
+          try {
+            const response = await fetch(`${API_BASE_PATH}/api/check-auth`);
+            const data = await response.json();
 
-          if (data.authenticated) {
-            currentUser = data.user;
-            document.getElementById("username").textContent = data.user.name;
-            // NOW that we know the user is authenticated, load the data.
-            setCurrentDate();
-            loadDashboardData();
-          } else {
-            // If not authenticated, redirect to the login page
+            if (data.authenticated) {
+              currentUser = data.user;
+              document.getElementById("username").textContent = data.user.name;
+              // NOW that we know the user is authenticated, load the data.
+              setCurrentDate();
+              loadDashboardData();
+            } else {
+              // If not authenticated, redirect to the login page
+              window.location.href = `${API_BASE_PATH}/`;
+            }
+          } catch (error) {
+            console.error("Auth check failed:", error);
             window.location.href = `${API_BASE_PATH}/`;
           }
-        } catch (error) {
-          console.error("Auth check failed:", error);
-          window.location.href = `${API_BASE_PATH}/`;
         }
-      }
 
-      // Set current date
-      function setCurrentDate() {
-        const now = new Date();
-        const options = {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
+        // Set current date
+        function setCurrentDate() {
+          const now = new Date();
+          const options = {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          };
+          document.getElementById("current-date").textContent =
+            now.toLocaleDateString("en-US", options);
+        }
+
+        // Load all dashboard data
+        async function loadDashboardData() {
+          try {
+            await Promise.all([
+              loadSuppliers(),
+              loadVendors(),
+              loadInwards(),
+              loadOutwards(),
+              loadReturns(),
+              loadPaneerRedirects(),
+            ]);
+
+            calculateFinancials();
+            calculateQualityMetrics();
+            generateRecentActivities();
+          } catch (error) {
+            console.error("Error loading dashboard data:", error);
+          }
+        }
+
+        // Data storage
+        let dashboardData = {
+          suppliers: [],
+          vendors: [],
+          inwards: [],
+          outwards: [],
+          returns: [],
+          paneerRedirects: [],
         };
-        document.getElementById("current-date").textContent =
-          now.toLocaleDateString("en-US", options);
-      }
 
-      // Load all dashboard data
-      async function loadDashboardData() {
-        try {
-          await Promise.all([
-            loadSuppliers(),
-            loadVendors(),
-            loadInwards(),
-            loadOutwards(),
-            loadReturns(),
-            loadPaneerRedirects(),
-          ]);
-
-          calculateFinancials();
-          calculateQualityMetrics();
-          generateRecentActivities();
-        } catch (error) {
-          console.error("Error loading dashboard data:", error);
+        // Load suppliers
+        async function loadSuppliers() {
+          try {
+            const response = await fetch("/suppliers");
+            dashboardData.suppliers = await response.json();
+            document.getElementById("suppliers-count").textContent =
+              dashboardData.suppliers.length;
+          } catch (error) {
+            console.error("Error loading suppliers:", error);
+          }
         }
-      }
 
-      // Data storage
-      let dashboardData = {
-        suppliers: [],
-        vendors: [],
-        inwards: [],
-        outwards: [],
-        returns: [],
-        paneerRedirects: [],
-      };
-
-      // Load suppliers
-      async function loadSuppliers() {
-        try {
-          const response = await fetch("/suppliers");
-          dashboardData.suppliers = await response.json();
-          document.getElementById("suppliers-count").textContent =
-            dashboardData.suppliers.length;
-        } catch (error) {
-          console.error("Error loading suppliers:", error);
+        // Load vendors
+        async function loadVendors() {
+          try {
+            const response = await fetch("/vendors");
+            dashboardData.vendors = await response.json();
+            document.getElementById("vendors-count").textContent =
+              dashboardData.vendors.length;
+          } catch (error) {
+            console.error("Error loading vendors:", error);
+          }
         }
-      }
 
-      // Load vendors
-      async function loadVendors() {
-        try {
-          const response = await fetch("/vendors");
-          dashboardData.vendors = await response.json();
-          document.getElementById("vendors-count").textContent =
-            dashboardData.vendors.length;
-        } catch (error) {
-          console.error("Error loading vendors:", error);
+        // Load inwards
+        async function loadInwards() {
+          try {
+            const response = await fetch("/inwards");
+            dashboardData.inwards = await response.json();
+
+            const today = new Date().toISOString().split("T")[0];
+            const todayInwards = dashboardData.inwards.filter(
+              (item) => item.date === today
+            );
+            const totalQuantity = todayInwards.reduce(
+              (sum, item) => sum + item.quantity,
+              0
+            );
+
+            document.getElementById("inwards-quantity").textContent =
+              totalQuantity.toFixed(1);
+          } catch (error) {
+            console.error("Error loading inwards:", error);
+          }
         }
-      }
 
-      // Load inwards
-      async function loadInwards() {
-        try {
-          const response = await fetch("/inwards");
-          dashboardData.inwards = await response.json();
+        // Load outwards
+        async function loadOutwards() {
+          try {
+            const response = await fetch("/outwards");
+            dashboardData.outwards = await response.json();
 
+            const today = new Date().toISOString().split("T")[0];
+            const todayOutwards = dashboardData.outwards.filter(
+              (item) => item.date === today
+            );
+            const totalQuantity = todayOutwards.reduce(
+              (sum, item) => sum + item.quantity,
+              0
+            );
+
+            document.getElementById("outwards-quantity").textContent =
+              totalQuantity.toFixed(1);
+          } catch (error) {
+            console.error("Error loading outwards:", error);
+          }
+        }
+
+        // Load returns
+        async function loadReturns() {
+          try {
+            const response = await fetch("/returns");
+            dashboardData.returns = await response.json();
+
+            const today = new Date().toISOString().split("T")[0];
+            const todayReturns = dashboardData.returns.filter(
+              (item) => item.date === today
+            );
+            const totalQuantity = todayReturns.reduce(
+              (sum, item) => sum + item.quantity,
+              0
+            );
+
+            document.getElementById("returns-quantity").textContent =
+              totalQuantity.toFixed(1);
+          } catch (error) {
+            console.error("Error loading returns:", error);
+          }
+        }
+
+        // Load paneer redirects
+        async function loadPaneerRedirects() {
+          try {
+            const response = await fetch("/paneer-redirects");
+            dashboardData.paneerRedirects = await response.json();
+          } catch (error) {
+            console.error("Error loading paneer redirects:", error);
+          }
+        }
+
+        // Calculate current stock and financial metrics
+        function calculateFinancials() {
+          const today = new Date().toISOString().split("T")[0];
+
+          // Today's data
+          const todayInwards = dashboardData.inwards.filter(
+            (item) => item.date === today
+          );
+          const todayOutwards = dashboardData.outwards.filter(
+            (item) => item.date === today
+          );
+          const todayPaneer = dashboardData.paneerRedirects.filter(
+            (item) => item.date === today
+          );
+          const todayReturns = dashboardData.returns.filter(
+            (item) => item.date === today
+          );
+
+          // Calculate quantities
+          const totalInward = todayInwards.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+          const totalOutward = todayOutwards.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+          const totalPaneer = todayPaneer.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+          const totalReturns = todayReturns.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+
+          // Calculate stock (inward - outward - paneer + returns)
+          const currentStock =
+            totalInward - totalOutward - totalPaneer + totalReturns;
+          document.getElementById("current-stock").textContent =
+            currentStock.toFixed(1);
+
+          // Calculate financial metrics
+          const inwardCost = totalInward * 35; // ₹35 per liter from suppliers
+          const outwardRevenue = (totalOutward - totalReturns) * 40; // ₹40 per liter to vendors
+          const paneerRevenue = totalPaneer * 38; // ₹38 per liter to paneer factory
+          const netProfit = outwardRevenue + paneerRevenue - inwardCost;
+
+          document.getElementById("inward-cost").textContent =
+            inwardCost.toFixed(0);
+          document.getElementById("outward-revenue").textContent =
+            outwardRevenue.toFixed(0);
+          document.getElementById("paneer-revenue").textContent =
+            paneerRevenue.toFixed(0);
+          document.getElementById("net-profit").textContent =
+            netProfit.toFixed(0);
+        }
+
+        // Calculate quality metrics
+        function calculateQualityMetrics() {
           const today = new Date().toISOString().split("T")[0];
           const todayInwards = dashboardData.inwards.filter(
             (item) => item.date === today
           );
-          const totalQuantity = todayInwards.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          );
 
-          document.getElementById("inwards-quantity").textContent =
-            totalQuantity.toFixed(1);
-        } catch (error) {
-          console.error("Error loading inwards:", error);
+          if (todayInwards.length > 0) {
+            const avgFat =
+              todayInwards.reduce((sum, item) => sum + item.fat, 0) /
+              todayInwards.length;
+            const avgSnf =
+              todayInwards.reduce((sum, item) => sum + item.snf, 0) /
+              todayInwards.length;
+
+            document.getElementById("avg-fat").textContent = avgFat.toFixed(2);
+            document.getElementById("avg-snf").textContent = avgSnf.toFixed(2);
+            document.getElementById("total-inward-entries").textContent =
+              todayInwards.length;
+          }
         }
-      }
 
-      // Load outwards
-      async function loadOutwards() {
-        try {
-          const response = await fetch("/outwards");
-          dashboardData.outwards = await response.json();
-
+        // Generate recent activities
+        function generateRecentActivities() {
+          const activities = [];
           const today = new Date().toISOString().split("T")[0];
-          const todayOutwards = dashboardData.outwards.filter(
-            (item) => item.date === today
-          );
-          const totalQuantity = todayOutwards.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          );
 
-          document.getElementById("outwards-quantity").textContent =
-            totalQuantity.toFixed(1);
-        } catch (error) {
-          console.error("Error loading outwards:", error);
-        }
-      }
-
-      // Load returns
-      async function loadReturns() {
-        try {
-          const response = await fetch("/returns");
-          dashboardData.returns = await response.json();
-
-          const today = new Date().toISOString().split("T")[0];
-          const todayReturns = dashboardData.returns.filter(
-            (item) => item.date === today
-          );
-          const totalQuantity = todayReturns.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          );
-
-          document.getElementById("returns-quantity").textContent =
-            totalQuantity.toFixed(1);
-        } catch (error) {
-          console.error("Error loading returns:", error);
-        }
-      }
-
-      // Load paneer redirects
-      async function loadPaneerRedirects() {
-        try {
-          const response = await fetch("/paneer-redirects");
-          dashboardData.paneerRedirects = await response.json();
-        } catch (error) {
-          console.error("Error loading paneer redirects:", error);
-        }
-      }
-
-      // Calculate current stock and financial metrics
-      function calculateFinancials() {
-        const today = new Date().toISOString().split("T")[0];
-
-        // Today's data
-        const todayInwards = dashboardData.inwards.filter(
-          (item) => item.date === today
-        );
-        const todayOutwards = dashboardData.outwards.filter(
-          (item) => item.date === today
-        );
-        const todayPaneer = dashboardData.paneerRedirects.filter(
-          (item) => item.date === today
-        );
-        const todayReturns = dashboardData.returns.filter(
-          (item) => item.date === today
-        );
-
-        // Calculate quantities
-        const totalInward = todayInwards.reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        );
-        const totalOutward = todayOutwards.reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        );
-        const totalPaneer = todayPaneer.reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        );
-        const totalReturns = todayReturns.reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        );
-
-        // Calculate stock (inward - outward - paneer + returns)
-        const currentStock =
-          totalInward - totalOutward - totalPaneer + totalReturns;
-        document.getElementById("current-stock").textContent =
-          currentStock.toFixed(1);
-
-        // Calculate financial metrics
-        const inwardCost = totalInward * 35; // ₹35 per liter from suppliers
-        const outwardRevenue = (totalOutward - totalReturns) * 40; // ₹40 per liter to vendors
-        const paneerRevenue = totalPaneer * 38; // ₹38 per liter to paneer factory
-        const netProfit = outwardRevenue + paneerRevenue - inwardCost;
-
-        document.getElementById("inward-cost").textContent =
-          inwardCost.toFixed(0);
-        document.getElementById("outward-revenue").textContent =
-          outwardRevenue.toFixed(0);
-        document.getElementById("paneer-revenue").textContent =
-          paneerRevenue.toFixed(0);
-        document.getElementById("net-profit").textContent =
-          netProfit.toFixed(0);
-      }
-
-      // Calculate quality metrics
-      function calculateQualityMetrics() {
-        const today = new Date().toISOString().split("T")[0];
-        const todayInwards = dashboardData.inwards.filter(
-          (item) => item.date === today
-        );
-
-        if (todayInwards.length > 0) {
-          const avgFat =
-            todayInwards.reduce((sum, item) => sum + item.fat, 0) /
-            todayInwards.length;
-          const avgSnf =
-            todayInwards.reduce((sum, item) => sum + item.snf, 0) /
-            todayInwards.length;
-
-          document.getElementById("avg-fat").textContent = avgFat.toFixed(2);
-          document.getElementById("avg-snf").textContent = avgSnf.toFixed(2);
-          document.getElementById("total-inward-entries").textContent =
-            todayInwards.length;
-        }
-      }
-
-      // Generate recent activities
-      function generateRecentActivities() {
-        const activities = [];
-        const today = new Date().toISOString().split("T")[0];
-
-        // Add recent inwards
-        dashboardData.inwards
-          .filter((item) => item.date === today)
-          .forEach((item) => {
-            activities.push({
-              text: `Milk received from ${item.supplierName} - ${item.quantity}L`,
-              time: item.created_at
-                ? new Date(item.created_at).toLocaleTimeString()
-                : "Today",
-              type: "inward",
+          // Add recent inwards
+          dashboardData.inwards
+            .filter((item) => item.date === today)
+            .forEach((item) => {
+              activities.push({
+                text: `Milk received from ${item.supplierName} - ${item.quantity}L`,
+                time: item.created_at
+                  ? new Date(item.created_at).toLocaleTimeString()
+                  : "Today",
+                type: "inward",
+              });
             });
-          });
 
-        // Add recent outwards
-        dashboardData.outwards
-          .filter((item) => item.date === today)
-          .forEach((item) => {
-            activities.push({
-              text: `Milk delivered to ${item.vendorName} - ${item.quantity}L`,
-              time: item.created_at
-                ? new Date(item.created_at).toLocaleTimeString()
-                : "Today",
-              type: "outward",
+          // Add recent outwards
+          dashboardData.outwards
+            .filter((item) => item.date === today)
+            .forEach((item) => {
+              activities.push({
+                text: `Milk delivered to ${item.vendorName} - ${item.quantity}L`,
+                time: item.created_at
+                  ? new Date(item.created_at).toLocaleTimeString()
+                  : "Today",
+                type: "outward",
+              });
             });
-          });
 
-        // Add recent returns
-        dashboardData.returns
-          .filter((item) => item.date === today)
-          .forEach((item) => {
-            activities.push({
-              text: `Milk returned from ${item.vendorName} - ${item.quantity}L`,
-              time: item.created_at
-                ? new Date(item.created_at).toLocaleTimeString()
-                : "Today",
-              type: "return",
+          // Add recent returns
+          dashboardData.returns
+            .filter((item) => item.date === today)
+            .forEach((item) => {
+              activities.push({
+                text: `Milk returned from ${item.vendorName} - ${item.quantity}L`,
+                time: item.created_at
+                  ? new Date(item.created_at).toLocaleTimeString()
+                  : "Today",
+                type: "return",
+              });
             });
-          });
 
-        // Sort by time and show latest 10
-        activities.sort((a, b) => new Date(b.time) - new Date(a.time));
-        const recentActivities = activities.slice(0, 10);
+          // Sort by time and show latest 10
+          activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+          const recentActivities = activities.slice(0, 10);
 
-        const activitiesContainer =
-          document.getElementById("recent-activities");
-        if (recentActivities.length > 0) {
-          activitiesContainer.innerHTML = recentActivities
-            .map(
-              (activity) => `
-                    <div class="activity-item">
-                        <div class="activity-text">${activity.text}</div>
-                        <div class="activity-time">${activity.time}</div>
-                    </div>
-                `
-            )
-            .join("");
-        } else {
-          activitiesContainer.innerHTML =
-            '<div class="activity-item"><div class="activity-text">No recent activities for today</div></div>';
+          const activitiesContainer =
+            document.getElementById("recent-activities");
+          if (recentActivities.length > 0) {
+            activitiesContainer.innerHTML = recentActivities
+              .map(
+                (activity) => `
+                      <div class="activity-item">
+                          <div class="activity-text">${activity.text}</div>
+                          <div class="activity-time">${activity.time}</div>
+                      </div>
+                  `
+              )
+              .join("");
+          } else {
+            activitiesContainer.innerHTML =
+              '<div class="activity-item"><div class="activity-text">No recent activities for today</div></div>';
+          }
         }
-      }
 
       // Logout function
-      async function logout() {
-        try {
-          const response = await fetch("/api/logout", { method: "POST" });
-          if (response.ok) {
-            window.location.href = "/";
+        async function logout() {
+          try {
+            const response = await fetch(`${API_BASE_PATH}/api/logout`, {
+              method: "POST",
+            });
+            if (response.ok) {
+              window.location.href = `${API_BASE_PATH}/`;
+            }
+          } catch (error) {
+            console.error("Logout failed:", error);
+            window.location.href = `${API_BASE_PATH}/`;
           }
-        } catch (error) {
-          console.error("Logout failed:", error);
-          // Force redirect even if logout fails
-          window.location.href = "/";
         }
-      }
 
-      // Menu item click handlers (for future implementation)
-      document.querySelectorAll(".menu-item").forEach((item) => {
-        item.addEventListener("click", function () {
-          document
-            .querySelectorAll(".menu-item")
-            .forEach((i) => i.classList.remove("active"));
-          this.classList.add("active");
+        // Menu item click handlers (for future implementation)
+        document.querySelectorAll(".menu-item").forEach((item) => {
+          item.addEventListener("click", function () {
+            document
+              .querySelectorAll(".menu-item")
+              .forEach((i) => i.classList.remove("active"));
+            this.classList.add("active");
 
-          // Here you can add navigation logic for different sections
-          const section = this.textContent.trim().toLowerCase();
-          console.log("Navigate to:", section);
+            // Here you can add navigation logic for different sections
+            const section = this.textContent.trim().toLowerCase();
+            console.log("Navigate to:", section);
+          });
         });
-      });
 
-      // Auto-refresh dashboard every 5 minutes
-      setInterval(loadDashboardData, 5 * 60 * 1000);
+        // Auto-refresh dashboard every 5 minutes
+        setInterval(loadDashboardData, 5 * 60 * 1000);
     </script>
   </body>
 </html>

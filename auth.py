@@ -380,4 +380,10 @@ def setup_auth_routes(app, auth_manager, api_prefix):
         else:
             return jsonify({'error': 'Not authenticated'}), 401
     
+    @app.route('/dashboard')
+    @login_required(auth_manager)
+    def dashboard(user):
+        """Dashboard page - requires authentication"""
+        return render_template('dashboard.html', user=user, api_prefix=api_prefix)
+    
     return auth_manager
