@@ -1,8 +1,7 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
@@ -89,7 +88,7 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         password_hash = generate_password_hash('admin123')
         cursor.execute('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)', 
-                      ('admin', password_hash))
+                       ('admin', password_hash))
     
     conn.commit()
     conn.close()
@@ -181,12 +180,12 @@ def dashboard():
     conn.close()
     
     return render_template('dashboard.html', 
-                         total_farmers=total_farmers,
-                         total_buyers=total_buyers,
-                         recent_inward=recent_inward,
-                         recent_outward=recent_outward,
-                         pending_inward=pending_inward,
-                         pending_outward=pending_outward)
+                           total_farmers=total_farmers,
+                           total_buyers=total_buyers,
+                           recent_inward=recent_inward,
+                           recent_outward=recent_outward,
+                           pending_inward=pending_inward,
+                           pending_outward=pending_outward)
 
 @app.route('/farmers')
 @login_required
@@ -212,8 +211,8 @@ def add_farmer():
                 INSERT INTO farmers (name, mobile, place, acres_owned, acres_cultivated)
                 VALUES (?, ?, ?, ?, ?)
             ''', (name, mobile, place, 
-                 float(acres_owned) if acres_owned else None,
-                 float(acres_cultivated) if acres_cultivated else None))
+                  float(acres_owned) if acres_owned else None,
+                  float(acres_cultivated) if acres_cultivated else None))
             conn.commit()
             flash('Farmer added successfully!')
             return redirect(url_for('farmers'))
@@ -556,7 +555,7 @@ def delete_inward_batch():
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         conn.close()
-        
+
 @app.route('/outward')
 @login_required
 def outward():
@@ -570,65 +569,132 @@ def outward():
     conn.close()
     return render_template('outward.html', transactions=transactions)
 
+
 @app.route('/add_outward', methods=['GET', 'POST'])
 @login_required
 def add_outward():
     conn = get_db_connection()
-    
+
     if request.method == 'POST':
-        buyer_id = request.form['buyer_id']
-        weight_tons = float(request.form['weight_tons'])
-        selling_price = float(request.form['selling_price'])
-        transaction_date = request.form['transaction_date']
-        notes = request.form.get('notes', '')
-        
-        total_amount = weight_tons * selling_price
-        
         try:
+            # --- Date and Initial Entry Validation ---
+            first_inward = conn.execute('SELECT MIN(transaction_date) as first_date FROM inward_transactions').fetchone()
+            first_inward_date_str = first_inward['first_date'] if first_inward else None
+
+            if not first_inward_date_str:
+                flash('Cannot add outward transaction. The first transaction must be an inward entry.', 'error')
+                return redirect(url_for('add_outward'))
+
+            transaction_date_str = request.form['transaction_date']
+            transaction_date_obj = datetime.strptime(transaction_date_str, '%Y-%m-%d').date()
+            first_inward_date_obj = datetime.strptime(first_inward_date_str, '%Y-%m-%d').date()
+
+            if transaction_date_obj < first_inward_date_obj:
+                flash(f'Outward transaction date cannot be before the first inward transaction date ({first_inward_date_str}).', 'error')
+                return redirect(url_for('add_outward'))
+
+            # --- Stock Quantity Validation ---
+            weight_tons = float(request.form['weight_tons'])
+            total_inward = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) as total FROM inward_transactions').fetchone()['total']
+            total_outward = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) as total FROM outward_transactions').fetchone()['total']
+            available_stock = total_inward - total_outward
+
+            if weight_tons > available_stock:
+                flash(f'Cannot add outward transaction. Insufficient stock. Available: {available_stock:.2f} tons.', 'error')
+                return redirect(url_for('add_outward'))
+
+            # --- Proceed with insertion ---
+            buyer_id = request.form['buyer_id']
+            selling_price = float(request.form['selling_price'])
+            notes = request.form.get('notes', '')
+            total_amount = weight_tons * selling_price
+
             conn.execute('''
                 INSERT INTO outward_transactions 
                 (buyer_id, weight_tons, selling_price, total_amount, transaction_date, notes)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (buyer_id, weight_tons, selling_price, total_amount, transaction_date, notes))
+            ''', (buyer_id, weight_tons, selling_price, total_amount, transaction_date_str, notes))
             conn.commit()
             flash('Outward transaction added successfully!')
             return redirect(url_for('outward'))
+
         except Exception as e:
-            flash(f'Error adding transaction: {str(e)}')
-    
-    buyers = conn.execute('SELECT * FROM buyers ORDER BY name').fetchall()
-    conn.close()
-    return render_template('add_outward.html', buyers=buyers)
+            flash(f'An error occurred: {str(e)}', 'error')
+            return redirect(url_for('add_outward'))
+        finally:
+            conn.close()
+
+    # --- MODIFIED FOR GET REQUEST ---
+    # This part runs when the page is loaded initially
+    try:
+        buyers = conn.execute('SELECT * FROM buyers ORDER BY name').fetchall()
+
+        # Calculate available stock and pass it to the template
+        total_inward = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) as total FROM inward_transactions').fetchone()['total']
+        total_outward = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) as total FROM outward_transactions').fetchone()['total']
+        available_stock = total_inward - total_outward
+
+        return render_template('add_outward.html', buyers=buyers, available_stock=available_stock)
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/edit_outward/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_outward(id):
     conn = get_db_connection()
-    transaction = conn.execute('SELECT * FROM outward_transactions WHERE id = ?', (id,)).fetchone()
 
     if request.method == 'POST':
-        buyer_id = request.form['buyer_id']
-        weight_tons = float(request.form['weight_tons'])
-        selling_price = float(request.form['selling_price'])
-        transaction_date = request.form['transaction_date']
-        notes = request.form.get('notes', '')
-        
-        total_amount = weight_tons * selling_price
-        
         try:
+            # --- Date Validation ---
+            first_inward = conn.execute('SELECT MIN(transaction_date) as first_date FROM inward_transactions').fetchone()
+            first_inward_date_str = first_inward['first_date'] if first_inward else None
+
+            if not first_inward_date_str:
+                flash('Data integrity error: Cannot find any inward transactions to validate against.', 'error')
+                return redirect(url_for('outward'))
+
+            transaction_date_str = request.form['transaction_date']
+            transaction_date_obj = datetime.strptime(transaction_date_str, '%Y-%m-%d').date()
+            first_inward_date_obj = datetime.strptime(first_inward_date_str, '%Y-%m-%d').date()
+
+            if transaction_date_obj < first_inward_date_obj:
+                flash(f'Outward transaction date cannot be before the first inward transaction date ({first_inward_date_str}).', 'error')
+                return redirect(url_for('edit_outward', id=id))
+
+            # --- Stock Quantity Validation ---
+            weight_tons = float(request.form['weight_tons'])
+            total_inward = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) FROM inward_transactions').fetchone()[0]
+            total_outward = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) FROM outward_transactions WHERE id != ?', (id,)).fetchone()[0]
+            available_stock = total_inward - total_outward
+
+            if weight_tons > available_stock:
+                flash(f'Cannot update transaction. Insufficient stock. Available for this transaction: {available_stock:.2f} tons.', 'error')
+                return redirect(url_for('edit_outward', id=id))
+
+            # --- Proceed with update ---
+            buyer_id = request.form['buyer_id']
+            selling_price = float(request.form['selling_price'])
+            notes = request.form.get('notes', '')
+            total_amount = weight_tons * selling_price
+
             conn.execute('''
                 UPDATE outward_transactions
                 SET buyer_id = ?, weight_tons = ?, selling_price = ?, total_amount = ?, transaction_date = ?, notes = ?
                 WHERE id = ?
-            ''', (buyer_id, weight_tons, selling_price, total_amount, transaction_date, notes, id))
+            ''', (buyer_id, weight_tons, selling_price, total_amount, transaction_date_str, notes, id))
             conn.commit()
             flash('Outward transaction updated successfully!')
             return redirect(url_for('outward'))
+
         except Exception as e:
-            flash(f'Error updating transaction: {str(e)}')
+            flash(f'An error occurred: {str(e)}', 'error')
+            return redirect(url_for('edit_outward', id=id))
         finally:
             conn.close()
 
+    # GET request
+    transaction = conn.execute('SELECT * FROM outward_transactions WHERE id = ?', (id,)).fetchone()
     if transaction is None:
         flash('Transaction not found!')
         conn.close()
@@ -686,16 +752,188 @@ def update_payment_status():
     
     if transaction_type == 'inward':
         conn.execute('UPDATE inward_transactions SET payment_status = ? WHERE id = ?', 
-                    (status, transaction_id))
+                     (status, transaction_id))
     else:
         conn.execute('UPDATE outward_transactions SET payment_status = ? WHERE id = ?', 
-                    (status, transaction_id))
+                     (status, transaction_id))
     
     conn.commit()
     conn.close()
     
     return jsonify({'success': True})
 
+@app.route('/api/dashboard_stats')
+@login_required
+def api_dashboard_stats():
+    """API endpoint to get dashboard statistics"""
+    conn = get_db_connection()
+    
+    try:
+        # Total counts
+        total_farmers = conn.execute('SELECT COUNT(*) as count FROM farmers').fetchone()['count']
+        total_buyers = conn.execute('SELECT COUNT(*) as count FROM buyers').fetchone()['count']
+        
+        # Total inward and outward transactions
+        total_inward_weight = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) as total FROM inward_transactions').fetchone()['total']
+        total_inward_amount = conn.execute('SELECT COALESCE(SUM(confirmed_amount), 0) as total FROM inward_transactions').fetchone()['total']
+        
+        total_outward_weight = conn.execute('SELECT COALESCE(SUM(weight_tons), 0) as total FROM outward_transactions').fetchone()['total']
+        total_outward_amount = conn.execute('SELECT COALESCE(SUM(total_amount), 0) as total FROM outward_transactions').fetchone()['total']
+        
+        # Current stock (inward - outward)
+        current_stock = total_inward_weight - total_outward_weight
+        
+        # Pending amounts
+        pending_from_buyers = conn.execute('''
+            SELECT COALESCE(SUM(total_amount), 0) as total 
+            FROM outward_transactions 
+            WHERE payment_status = "Pending"
+        ''').fetchone()['total']
+        
+        pending_to_farmers = conn.execute('''
+            SELECT COALESCE(SUM(confirmed_amount), 0) as total 
+            FROM inward_transactions 
+            WHERE payment_status = "Pending"
+        ''').fetchone()['total']
+        
+        # Today's transactions
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        
+        today_inward = conn.execute('''
+            SELECT COALESCE(SUM(weight_tons), 0) as weight, COALESCE(SUM(confirmed_amount), 0) as amount 
+            FROM inward_transactions 
+            WHERE transaction_date = ?
+        ''', (today_str,)).fetchone()
+        
+        today_outward = conn.execute('''
+            SELECT COALESCE(SUM(weight_tons), 0) as weight, COALESCE(SUM(total_amount), 0) as amount 
+            FROM outward_transactions 
+            WHERE transaction_date = ?
+        ''', (today_str,)).fetchone()
+        
+        # Recent transactions for activity feed
+        recent_inward = conn.execute('''
+            SELECT i.*, f.name as farmer_name 
+            FROM inward_transactions i 
+            JOIN farmers f ON i.farmer_id = f.id 
+            ORDER BY i.created_at DESC 
+            LIMIT 5
+        ''').fetchall()
+        
+        recent_outward = conn.execute('''
+            SELECT o.*, b.name as buyer_name 
+            FROM outward_transactions o 
+            JOIN buyers b ON o.buyer_id = b.id 
+            ORDER BY o.created_at DESC 
+            LIMIT 5
+        ''').fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_farmers': total_farmers,
+                'total_buyers': total_buyers,
+                'total_inward_weight': round(total_inward_weight, 2),
+                'total_inward_amount': round(total_inward_amount, 2),
+                'total_outward_weight': round(total_outward_weight, 2),
+                'total_outward_amount': round(total_outward_amount, 2),
+                'current_stock': round(current_stock, 2),
+                'pending_from_buyers': round(pending_from_buyers, 2),
+                'pending_to_farmers': round(pending_to_farmers, 2),
+                'today_inward_weight': round(today_inward['weight'], 2),
+                'today_inward_amount': round(today_inward['amount'], 2),
+                'today_outward_weight': round(today_outward['weight'], 2),
+                'today_outward_amount': round(today_outward['amount'], 2),
+                'recent_inward': [dict(row) for row in recent_inward],
+                'recent_outward': [dict(row) for row in recent_outward]
+            }
+        })
+        
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/corn_price')
+@login_required
+def api_corn_price():
+    """API endpoint to get current corn price (mock data - replace with real API)"""
+    # This is mock data. In production, you would fetch from a real commodity price API
+    # or maintain a price table in your database
+    mock_price = {
+        'price_per_ton': 25000.00,  # Price in your currency per ton
+        'currency': 'INR',
+        'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'change': '+2.5%',
+        'trend': 'up'  # up, down, stable
+    }
+    
+    return jsonify({
+        'success': True,
+        'data': mock_price
+    })
+
+@app.route('/api/monthly_summary')
+@login_required
+def api_monthly_summary():
+    """API endpoint to get monthly transaction summary"""
+    conn = get_db_connection()
+    
+    try:
+        # Get last 12 months data
+        monthly_data = conn.execute('''
+            SELECT 
+                strftime('%Y-%m', transaction_date) as month,
+                SUM(weight_tons) as inward_weight,
+                SUM(confirmed_amount) as inward_amount
+            FROM inward_transactions 
+            WHERE transaction_date >= date('now', '-12 months')
+            GROUP BY strftime('%Y-%m', transaction_date)
+            ORDER BY month
+        ''').fetchall()
+        
+        monthly_outward = conn.execute('''
+            SELECT 
+                strftime('%Y-%m', transaction_date) as month,
+                SUM(weight_tons) as outward_weight,
+                SUM(total_amount) as outward_amount
+            FROM outward_transactions 
+            WHERE transaction_date >= date('now', '-12 months')
+            GROUP BY strftime('%Y-%m', transaction_date)
+            ORDER BY month
+        ''').fetchall()
+        
+        conn.close()
+        
+        # Combine inward and outward data
+        combined_data = []
+        inward_dict = {row['month']: row for row in monthly_data}
+        outward_dict = {row['month']: row for row in monthly_outward}
+        
+        all_months = set(inward_dict.keys()) | set(outward_dict.keys())
+        
+        for month in sorted(all_months):
+            inward = inward_dict.get(month, {'inward_weight': 0, 'inward_amount': 0})
+            outward = outward_dict.get(month, {'outward_weight': 0, 'outward_amount': 0})
+            
+            combined_data.append({
+                'month': month,
+                'inward_weight': round(inward['inward_weight'] or 0, 2),
+                'inward_amount': round(inward['inward_amount'] or 0, 2),
+                'outward_weight': round(outward['outward_weight'] or 0, 2),
+                'outward_amount': round(outward['outward_amount'] or 0, 2)
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': combined_data
+        })
+        
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

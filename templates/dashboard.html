@@ -1,71 +1,856 @@
-{% extends "base.html" %} {% block page_title %}Dashboard{% endblock %} {% block
-content %}
-<div class="row mb-4">
-  <div class="col-md-3">
-    <div class="card bg-primary text-white">
-      <div class="card-body">
-        <form method="POST">
-          <div class="mb-3">
-            <label for="name" class="form-label">Name *</label>
-            <input
-              type="text"
-              class="form-control"
-              id="name"
-              name="name"
-              required
-            />
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Corn Trading Dashboard</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌽</text></svg>"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+      .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      }
+      .price-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+      .stock-card {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+      .pending-card {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      }
+      .activity-item {
+        transition: all 0.3s ease;
+      }
+      .activity-item:hover {
+        background-color: #f8fafc;
+        transform: translateX(5px);
+      }
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .trend-up {
+        color: #10b981;
+      }
+      .trend-down {
+        color: #ef4444;
+      }
+      .trend-stable {
+        color: #6b7280;
+      }
+
+      /* Fix for chart container */
+      .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+      }
+
+      /* Fix for activity container */
+      .activity-container {
+        height: 320px;
+        overflow-y: auto;
+      }
+
+      /* Custom scrollbar for activity container */
+      .activity-container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .activity-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+
+      .activity-container::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+      }
+
+      .activity-container::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+
+      /* Ensure the grid containers don't expand beyond viewport */
+      .charts-grid {
+        min-height: 400px;
+        max-height: 500px;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center py-4">
+          <div class="flex items-center space-x-4">
+            <i class="text-2xl">🌽</i>
+            <h1 class="text-xl font-bold text-gray-800">Corn Trading System</h1>
           </div>
-          <div class="mb-3">
-            <label for="mobile" class="form-label">Mobile Number *</label>
-            <input
-              type="tel"
-              class="form-control"
-              id="mobile"
-              name="mobile"
-              required
-            />
-          </div>
-          <div class="mb-3">
-            <label for="place" class="form-label">Place *</label>
-            <input
-              type="text"
-              class="form-control"
-              id="place"
-              name="place"
-              required
-            />
-          </div>
-          <div class="mb-3">
-            <label for="acres_owned" class="form-label">Acres Owned</label>
-            <input
-              type="number"
-              step="0.1"
-              class="form-control"
-              id="acres_owned"
-              name="acres_owned"
-            />
-          </div>
-          <div class="mb-3">
-            <label for="acres_cultivated" class="form-label"
-              >Acres Cultivated</label
+          <div class="flex items-center space-x-4">
+            <span class="text-gray-600"
+              >Welcome,
+              <span class="font-semibold">{{ session.username }}</span></span
             >
-            <input
-              type="number"
-              step="0.1"
-              class="form-control"
-              id="acres_cultivated"
-              name="acres_cultivated"
-            />
-          </div>
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Add Farmer</button>
-            <a href="{{ url_for('farmers') }}" class="btn btn-secondary"
-              >Cancel</a
+            <a
+              href="{{ url_for('logout') }}"
+              class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-200"
             >
+              <i class="fas fa-sign-out-alt mr-2"></i>Logout
+            </a>
           </div>
-        </form>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <!-- Quick Stats Grid -->
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Farmers -->
+        <div class="stat-card text-white p-6 rounded-xl shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm opacity-90">Total Farmers</p>
+              <p class="text-3xl font-bold" id="totalFarmers">--</p>
+            </div>
+            <i class="fas fa-users text-4xl opacity-80"></i>
+          </div>
+          <a
+            href="{{ url_for('farmers') }}"
+            class="block mt-4 text-sm opacity-90 hover:opacity-100"
+          >
+            View All <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+
+        <!-- Total Buyers -->
+        <div class="stat-card text-white p-6 rounded-xl shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm opacity-90">Total Buyers</p>
+              <p class="text-3xl font-bold" id="totalBuyers">--</p>
+            </div>
+            <i class="fas fa-handshake text-4xl opacity-80"></i>
+          </div>
+          <a
+            href="{{ url_for('buyers') }}"
+            class="block mt-4 text-sm opacity-90 hover:opacity-100"
+          >
+            View All <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+
+        <!-- Current Stock -->
+        <div class="stock-card text-white p-6 rounded-xl shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm opacity-90">Current Stock</p>
+              <p class="text-3xl font-bold" id="currentStock">-- TONS</p>
+            </div>
+            <i class="fas fa-warehouse text-4xl opacity-80"></i>
+          </div>
+          <p class="text-sm opacity-90 mt-2">Available inventory</p>
+        </div>
+
+        <!-- Today's Corn Price -->
+        <div class="price-card text-white p-6 rounded-xl shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm opacity-90">Corn Price/Ton</p>
+              <p class="text-3xl font-bold" id="cornPrice">-- ₹</p>
+            </div>
+            <i class="fas fa-chart-line text-4xl opacity-80"></i>
+          </div>
+          <div class="flex items-center mt-2">
+            <span class="text-sm opacity-90" id="priceChange">--</span>
+            <i class="fas fa-arrow-up text-sm ml-2" id="priceTrend"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction Summary -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Total Transactions -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-exchange-alt text-blue-600 mr-2"></i>
+            Total Transactions
+          </h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="text-center p-4 bg-green-50 rounded-lg">
+              <i class="fas fa-arrow-down text-green-600 text-2xl mb-2"></i>
+              <p
+                class="text-2xl font-bold text-green-700"
+                id="totalInwardWeight"
+              >
+                -- T
+              </p>
+              <p class="text-sm text-gray-600">Total Inward</p>
+              <p
+                class="text-lg font-semibold text-green-600"
+                id="totalInwardAmount"
+              >
+                ₹ --
+              </p>
+            </div>
+            <div class="text-center p-4 bg-red-50 rounded-lg">
+              <i class="fas fa-arrow-up text-red-600 text-2xl mb-2"></i>
+              <p
+                class="text-2xl font-bold text-red-700"
+                id="totalOutwardWeight"
+              >
+                -- T
+              </p>
+              <p class="text-sm text-gray-600">Total Outward</p>
+              <p
+                class="text-lg font-semibold text-red-600"
+                id="totalOutwardAmount"
+              >
+                ₹ --
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Activity -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-calendar-day text-purple-600 mr-2"></i>
+            Today's Activity
+          </h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="text-center p-4 bg-blue-50 rounded-lg">
+              <p class="text-xl font-bold text-blue-700" id="todayInwardWeight">
+                -- T
+              </p>
+              <p class="text-sm text-gray-600">Received</p>
+              <p
+                class="text-sm font-semibold text-blue-600"
+                id="todayInwardAmount"
+              >
+                ₹ --
+              </p>
+            </div>
+            <div class="text-center p-4 bg-orange-50 rounded-lg">
+              <p
+                class="text-xl font-bold text-orange-700"
+                id="todayOutwardWeight"
+              >
+                -- T
+              </p>
+              <p class="text-sm text-gray-600">Sold</p>
+              <p
+                class="text-sm font-semibold text-orange-600"
+                id="todayOutwardAmount"
+              >
+                ₹ --
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Payments -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Pending from Buyers -->
+        <div class="pending-card text-white p-6 rounded-xl shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm opacity-90">Pending from Buyers</p>
+              <p class="text-3xl font-bold" id="pendingFromBuyers">₹ --</p>
+              <p class="text-sm opacity-80 mt-1">Amount to be received</p>
+            </div>
+            <i class="fas fa-money-bill-wave text-4xl opacity-80"></i>
+          </div>
+          <a
+            href="{{ url_for('outward') }}"
+            class="block mt-4 text-sm opacity-90 hover:opacity-100"
+          >
+            View Outward Transactions <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+
+        <!-- Pending to Farmers -->
+        <div class="bg-white border-2 border-red-200 p-6 rounded-xl shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Pending to Farmers</p>
+              <p class="text-3xl font-bold text-red-600" id="pendingToFarmers">
+                ₹ --
+              </p>
+              <p class="text-sm text-gray-500 mt-1">Amount to be paid</p>
+            </div>
+            <i class="fas fa-exclamation-triangle text-4xl text-red-400"></i>
+          </div>
+          <a
+            href="{{ url_for('inward') }}"
+            class="block mt-4 text-sm text-red-600 hover:text-red-800"
+          >
+            View Inward Transactions <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Charts and Recent Activity -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 charts-grid">
+        <!-- Monthly Trend Chart -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-chart-bar text-indigo-600 mr-2"></i>
+            Monthly Trend (Last 6 Months)
+          </h3>
+          <div class="chart-container">
+            <canvas id="monthlyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-list text-teal-600 mr-2"></i>
+            Recent Activity
+          </h3>
+          <div class="activity-container" id="recentActivity">
+            <div class="flex items-center justify-center py-8">
+              <div class="loading"></div>
+              <span class="ml-3 text-gray-500">Loading activities...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+          <i class="fas fa-bolt text-yellow-600 mr-2"></i>
+          Quick Actions
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <a
+            href="{{ url_for('add_farmer') }}"
+            class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg text-center transition duration-200"
+          >
+            <i class="fas fa-user-plus text-2xl mb-2"></i>
+            <p class="text-sm font-medium">Add Farmer</p>
+          </a>
+          <a
+            href="{{ url_for('add_buyer') }}"
+            class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg text-center transition duration-200"
+          >
+            <i class="fas fa-handshake text-2xl mb-2"></i>
+            <p class="text-sm font-medium">Add Buyer</p>
+          </a>
+          <a
+            href="{{ url_for('add_inward') }}"
+            class="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg text-center transition duration-200"
+          >
+            <i class="fas fa-arrow-down text-2xl mb-2"></i>
+            <p class="text-sm font-medium">Add Inward</p>
+          </a>
+          <a
+            href="{{ url_for('add_outward') }}"
+            class="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-lg text-center transition duration-200"
+          >
+            <i class="fas fa-arrow-up text-2xl mb-2"></i>
+            <p class="text-sm font-medium">Add Outward</p>
+          </a>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-{% endblock %}
+
+    <script>
+      // Global variables
+      let monthlyChart;
+
+      // Format currency
+      function formatCurrency(amount) {
+        return new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(amount);
+      }
+
+      // Format number with commas
+      function formatNumber(num) {
+        return new Intl.NumberFormat("en-IN").format(num);
+      }
+
+      // Load dashboard data
+      async function loadDashboardData() {
+        try {
+          const response = await fetch("/api/dashboard_stats");
+          const result = await response.json();
+
+          if (result.success) {
+            const data = result.data;
+
+            // Update basic stats
+            document.getElementById("totalFarmers").textContent =
+              data.total_farmers;
+            document.getElementById("totalBuyers").textContent =
+              data.total_buyers;
+            document.getElementById("currentStock").textContent =
+              data.current_stock + " TONS";
+
+            // Update transaction totals
+            document.getElementById("totalInwardWeight").textContent =
+              data.total_inward_weight + " TONS";
+            document.getElementById("totalInwardAmount").textContent =
+              formatCurrency(data.total_inward_amount);
+            document.getElementById("totalOutwardWeight").textContent =
+              data.total_outward_weight + " TONS";
+            document.getElementById("totalOutwardAmount").textContent =
+              formatCurrency(data.total_outward_amount);
+
+            // Update today's activity
+            document.getElementById("todayInwardWeight").textContent =
+              data.today_inward_weight + " TONS";
+            document.getElementById("todayInwardAmount").textContent =
+              formatCurrency(data.today_inward_amount);
+            document.getElementById("todayOutwardWeight").textContent =
+              data.today_outward_weight + " TONS";
+            document.getElementById("todayOutwardAmount").textContent =
+              formatCurrency(data.today_outward_amount);
+
+            // Update pending amounts
+            document.getElementById("pendingFromBuyers").textContent =
+              formatCurrency(data.pending_from_buyers);
+            document.getElementById("pendingToFarmers").textContent =
+              formatCurrency(data.pending_to_farmers);
+
+            // Update recent activity
+            updateRecentActivity(data.recent_inward, data.recent_outward);
+          }
+        } catch (error) {
+          console.error("Error loading dashboard data:", error);
+        }
+      }
+
+      // Load corn price
+      async function loadCornPrice() {
+        try {
+          const response = await fetch("/api/corn_price");
+          const result = await response.json();
+
+          if (result.success) {
+            const data = result.data;
+            document.getElementById("cornPrice").textContent = formatCurrency(
+              data.price_per_ton
+            );
+            document.getElementById("priceChange").textContent = data.change;
+
+            const trendIcon = document.getElementById("priceTrend");
+            trendIcon.className = "fas text-sm ml-2 ";
+
+            if (data.trend === "up") {
+              trendIcon.classList.add("fa-arrow-up", "trend-up");
+            } else if (data.trend === "down") {
+              trendIcon.classList.add("fa-arrow-down", "trend-down");
+            } else {
+              trendIcon.classList.add("fa-minus", "trend-stable");
+            }
+          }
+        } catch (error) {
+          console.error("Error loading corn price:", error);
+        }
+      }
+
+      // Update recent activity
+      function updateRecentActivity(inward, outward) {
+        const container = document.getElementById("recentActivity");
+        const activities = [];
+
+        // Combine and sort activities
+        inward.forEach((item) => {
+          activities.push({
+            type: "inward",
+            date: item.transaction_date,
+            created_at: item.created_at,
+            name: item.farmer_name,
+            weight: item.weight_tons,
+            amount: item.confirmed_amount,
+            status: item.payment_status,
+          });
+        });
+
+        outward.forEach((item) => {
+          activities.push({
+            type: "outward",
+            date: item.transaction_date,
+            created_at: item.created_at,
+            name: item.buyer_name,
+            weight: item.weight_tons,
+            amount: item.total_amount,
+            status: item.payment_status,
+          });
+        });
+
+        // Sort by created_at desc
+        activities.sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        // Generate HTML
+        container.innerHTML = "";
+
+        if (activities.length === 0) {
+          container.innerHTML =
+            '<p class="text-gray-500 text-center py-4">No recent activities</p>';
+          return;
+        }
+
+        activities.forEach((activity) => {
+          const isInward = activity.type === "inward";
+          const iconClass = isInward
+            ? "fa-arrow-down text-green-600"
+            : "fa-arrow-up text-red-600";
+          const statusColor =
+            activity.status === "Paid" ? "text-green-600" : "text-orange-600";
+
+          const activityHTML = `
+                    <div class="activity-item flex items-center justify-between p-3 border-l-4 ${
+                      isInward ? "border-green-500" : "border-red-500"
+                    } bg-gray-50 rounded-r-lg">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas ${iconClass}"></i>
+                            <div>
+                                <p class="font-medium text-gray-800">${
+                                  activity.name
+                                }</p>
+                                <p class="text-sm text-gray-600">${
+                                  activity.weight
+                                }T - ${formatCurrency(activity.amount)}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">${
+                              activity.date
+                            }</p>
+                            <p class="text-xs ${statusColor} font-medium">${
+            activity.status
+          }</p>
+                        </div>
+                    </div>
+                `;
+          container.innerHTML += activityHTML;
+        });
+      }
+
+      // Load monthly chart data
+      async function loadMonthlyChart() {
+        try {
+          const response = await fetch("/api/monthly_summary");
+          const result = await response.json();
+
+          if (result.success) {
+            const data = result.data.slice(-6); // Last 6 months
+
+            const labels = data.map((item) => {
+              const [year, month] = item.month.split("-");
+              return new Date(year, month - 1).toLocaleDateString("en-US", {
+                month: "short",
+                year: "2-digit",
+              });
+            });
+
+            const inwardData = data.map((item) => item.inward_weight);
+            const outwardData = data.map((item) => item.outward_weight);
+
+            // Destroy existing chart if it exists
+            if (monthlyChart) {
+              monthlyChart.destroy();
+            }
+
+            const ctx = document
+              .getElementById("monthlyChart")
+              .getContext("2d");
+            monthlyChart = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels: labels,
+                datasets: [
+                  {
+                    label: "Inward (Tons)",
+                    data: inwardData,
+                    backgroundColor: "rgba(34, 197, 94, 0.8)",
+                    borderColor: "rgba(34, 197, 94, 1)",
+                    borderWidth: 1,
+                  },
+                  {
+                    label: "Outward (Tons)",
+                    data: outwardData,
+                    backgroundColor: "rgba(239, 68, 68, 0.8)",
+                    borderColor: "rgba(239, 68, 68, 1)",
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: "top",
+                  },
+                  title: {
+                    display: false,
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function (value) {
+                        return value + "T";
+                      },
+                    },
+                  },
+                },
+                interaction: {
+                  intersect: false,
+                  mode: "index",
+                },
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Error loading monthly chart:", error);
+        }
+      }
+
+      // Auto refresh data every 5 minutes
+      function startAutoRefresh() {
+        setInterval(() => {
+          loadDashboardData();
+          loadCornPrice();
+        }, 5 * 60 * 1000); // 5 minutes
+      }
+
+      // Initialize dashboard
+      document.addEventListener("DOMContentLoaded", function () {
+        loadDashboardData();
+        loadCornPrice();
+        loadMonthlyChart();
+        startAutoRefresh();
+      });
+
+      // Refresh button functionality (optional)
+      function refreshDashboard() {
+        // Show loading state
+        const loadingElements = document.querySelectorAll(
+          '[id*="total"], [id*="pending"], [id*="today"], [id*="current"], [id*="corn"]'
+        );
+        loadingElements.forEach((el) => {
+          if (el.textContent !== "--") {
+            el.innerHTML = '<div class="loading"></div>';
+          }
+        });
+
+        // Reload all data
+        loadDashboardData();
+        loadCornPrice();
+        loadMonthlyChart();
+      }
+
+      // Add keyboard shortcut for refresh (Ctrl/Cmd + R)
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "r") {
+          e.preventDefault();
+          refreshDashboard();
+        }
+      });
+
+      // Add click handlers for stat cards to make them more interactive
+      document
+        .querySelectorAll(".stat-card, .stock-card, .price-card, .pending-card")
+        .forEach((card) => {
+          card.addEventListener("click", function (e) {
+            if (!e.target.closest("a")) {
+              const link = this.querySelector("a");
+              if (link) {
+                window.location.href = link.href;
+              }
+            }
+          });
+        });
+
+      // Add tooltips for better UX
+      function addTooltips() {
+        const tooltipElements = [
+          {
+            id: "currentStock",
+            text: "Current stock = Total Inward - Total Outward",
+          },
+          {
+            id: "pendingFromBuyers",
+            text: "Total amount pending from buyers for outward transactions",
+          },
+          {
+            id: "pendingToFarmers",
+            text: "Total amount pending to farmers for inward transactions",
+          },
+        ];
+
+        tooltipElements.forEach(({ id, text }) => {
+          const element = document.getElementById(id);
+          if (element) {
+            element.parentElement.title = text;
+          }
+        });
+      }
+
+      // Call addTooltips after DOM is loaded
+      document.addEventListener("DOMContentLoaded", addTooltips);
+
+      // Add notification for low stock
+      function checkLowStock(currentStock) {
+        if (currentStock < 10) {
+          // Alert if stock is below 10 tons
+          if (!document.getElementById("lowStockAlert")) {
+            const alert = document.createElement("div");
+            alert.id = "lowStockAlert";
+            alert.className =
+              "fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50";
+            alert.innerHTML = `
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <span>Low Stock Alert: Only ${currentStock} TONS remaining!</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+            document.body.appendChild(alert);
+
+            // Auto remove after 10 seconds
+            setTimeout(() => {
+              if (document.getElementById("lowStockAlert")) {
+                document.getElementById("lowStockAlert").remove();
+              }
+            }, 10000);
+          }
+        }
+      }
+
+      // Update the loadDashboardData function to include low stock check
+      async function loadDashboardDataWithAlerts() {
+        try {
+          const response = await fetch("/api/dashboard_stats");
+          const result = await response.json();
+
+          if (result.success) {
+            const data = result.data;
+
+            // Update basic stats
+            document.getElementById("totalFarmers").textContent =
+              data.total_farmers;
+            document.getElementById("totalBuyers").textContent =
+              data.total_buyers;
+            document.getElementById("currentStock").textContent =
+              data.current_stock + " T";
+
+            // Check for low stock
+            checkLowStock(data.current_stock);
+
+            // Update transaction totals
+            document.getElementById("totalInwardWeight").textContent =
+              data.total_inward_weight + " T";
+            document.getElementById("totalInwardAmount").textContent =
+              formatCurrency(data.total_inward_amount);
+            document.getElementById("totalOutwardWeight").textContent =
+              data.total_outward_weight + " T";
+            document.getElementById("totalOutwardAmount").textContent =
+              formatCurrency(data.total_outward_amount);
+
+            // Update today's activity
+            document.getElementById("todayInwardWeight").textContent =
+              data.today_inward_weight + " T";
+            document.getElementById("todayInwardAmount").textContent =
+              formatCurrency(data.today_inward_amount);
+            document.getElementById("todayOutwardWeight").textContent =
+              data.today_outward_weight + " T";
+            document.getElementById("todayOutwardAmount").textContent =
+              formatCurrency(data.today_outward_amount);
+
+            // Update pending amounts
+            document.getElementById("pendingFromBuyers").textContent =
+              formatCurrency(data.pending_from_buyers);
+            document.getElementById("pendingToFarmers").textContent =
+              formatCurrency(data.pending_to_farmers);
+
+            // Update recent activity
+            updateRecentActivity(data.recent_inward, data.recent_outward);
+          }
+        } catch (error) {
+          console.error("Error loading dashboard data:", error);
+          showErrorNotification("Failed to load dashboard data");
+        }
+      }
+
+      // Error notification function
+      function showErrorNotification(message) {
+        const notification = document.createElement("div");
+        notification.className =
+          "fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50";
+        notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }, 5000);
+      }
+
+      // Update the initialization to use the new function
+      document.addEventListener("DOMContentLoaded", function () {
+        loadDashboardDataWithAlerts();
+        loadCornPrice();
+        loadMonthlyChart();
+        startAutoRefresh();
+      });
+    </script>
+  </body>
+</html>

@@ -3,7 +3,7 @@ from faker import Faker
 import random
 from datetime import datetime, timedelta
 
-# --- Configuration ---
+# --- Configuration (Updated) ---
 # The base URL of your running Flask application
 BASE_URL = 'http://127.0.0.1:5000'
 
@@ -11,11 +11,11 @@ BASE_URL = 'http://127.0.0.1:5000'
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = 'admin123'
 
-# Number of fake records to create for each section
+# Increased the number of transactions for a better graph
 NUM_FARMERS = 15
 NUM_BUYERS = 10
-NUM_INWARD_TRANSACTIONS = 50
-NUM_OUTWARD_TRANSACTIONS = 40
+NUM_INWARD_TRANSACTIONS = 200  # <-- Increased for more data
+NUM_OUTWARD_TRANSACTIONS = 150 # <-- Increased for more data
 
 # --- Script ---
 
@@ -81,9 +81,10 @@ def create_fake_buyers(session, count):
 
 def create_fake_inward_transactions(session, count, num_farmers):
     """Creates fake inward transactions, linking them to existing farmers."""
-    print(f"\n--- Creating {count} fake inward transactions... ---")
+    print(f"\n--- Creating {count} fake inward transactions over the last year... ---")
     url = f"{BASE_URL}/add_inward"
     for i in range(count):
+        # This already creates a date within the last 365 days, so no change is needed here.
         transaction_date = (datetime.now() - timedelta(days=random.randint(0, 365))).strftime('%Y-%m-%d')
         weight = round(random.uniform(0.5, 10.0), 2)
         price = round(random.uniform(18000, 25000), 2)
@@ -103,10 +104,11 @@ def create_fake_inward_transactions(session, count, num_farmers):
 
 def create_fake_outward_transactions(session, count, num_buyers):
     """Creates fake outward transactions, linking them to existing buyers."""
-    print(f"\n--- Creating {count} fake outward transactions... ---")
+    print(f"\n--- Creating {count} fake outward transactions over the last year... ---")
     url = f"{BASE_URL}/add_outward"
     for i in range(count):
-        transaction_date = (datetime.now() - timedelta(days=random.randint(0, 180))).strftime('%Y-%m-%d')
+        # *** CHANGED: This now creates a date within the last 365 days. ***
+        transaction_date = (datetime.now() - timedelta(days=random.randint(0, 365))).strftime('%Y-%m-%d')
         weight = round(random.uniform(5.0, 50.0), 2)
         price = round(random.uniform(23000, 30000), 2)
         

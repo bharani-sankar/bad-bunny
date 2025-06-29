@@ -57,6 +57,14 @@ endblock %} {% block content %}
                   name="weight_tons"
                   required
                 />
+                {% if available_stock is defined %}
+                <div
+                  class="form-text {% if available_stock > 0 %}text-success{% else %}text-danger{% endif %}"
+                  style="font-size: 0.9em; font-weight: bold"
+                >
+                  Available Stock: {{ "%.2f"|format(available_stock) }} Tons
+                </div>
+                {% endif %}
               </div>
             </div>
             <div class="col-md-6">
