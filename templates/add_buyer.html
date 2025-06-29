@@ -1,8 +1,11 @@
-{% extends "base.html" %} {% block page_title %}Dashboard{% endblock %} {% block
+{% extends "base.html" %} {% block page_title %}Add Buyer{% endblock %} {% block
 content %}
-<div class="row mb-4">
-  <div class="col-md-3">
-    <div class="card bg-primary text-white">
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h5>Add New Buyer</h5>
+      </div>
       <div class="card-body">
         <form method="POST">
           <div class="mb-3">
@@ -36,30 +39,18 @@ content %}
             />
           </div>
           <div class="mb-3">
-            <label for="acres_owned" class="form-label">Acres Owned</label>
+            <label for="business_type" class="form-label">Business Type</label>
             <input
-              type="number"
-              step="0.1"
+              type="text"
               class="form-control"
-              id="acres_owned"
-              name="acres_owned"
-            />
-          </div>
-          <div class="mb-3">
-            <label for="acres_cultivated" class="form-label"
-              >Acres Cultivated</label
-            >
-            <input
-              type="number"
-              step="0.1"
-              class="form-control"
-              id="acres_cultivated"
-              name="acres_cultivated"
+              id="business_type"
+              name="business_type"
+              placeholder="Factory, Trader, etc."
             />
           </div>
           <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Add Farmer</button>
-            <a href="{{ url_for('farmers') }}" class="btn btn-secondary"
+            <button type="submit" class="btn btn-success">Add Buyer</button>
+            <a href="{{ url_for('buyers') }}" class="btn btn-secondary"
               >Cancel</a
             >
           </div>

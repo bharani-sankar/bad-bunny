@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Corn Trading System{% endblock %}</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px;
+        background: #343a40;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar.show {
+        transform: translateX(0);
+      }
+
+      .sidebar .nav-link {
+        color: #fff;
+        padding: 15px 20px;
+        border-bottom: 1px solid #495057;
+      }
+
+      .sidebar .nav-link:hover {
+        background: #495057;
+        color: #fff;
+      }
+
+      .main-content {
+        margin-left: 0;
+        transition: margin-left 0.3s ease;
+      }
+
+      .navbar-toggler {
+        border: none;
+        color: #fff;
+      }
+
+      .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+      }
+
+      .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+
+      .status-paid {
+        background-color: #d1edff;
+        color: #0c5460;
+      }
+
+      @media (min-width: 768px) {
+        .sidebar {
+          transform: translateX(0);
+        }
+        .main-content {
+          margin-left: 250px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+      <div class="p-3">
+        <h4 class="text-white">Corn Trading</h4>
+        <hr class="text-white" />
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('dashboard') }}">
+              <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('farmers') }}">
+              <i class="fas fa-users me-2"></i> Farmers
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('buyers') }}">
+              <i class="fas fa-building me-2"></i> Buyers
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('inward') }}">
+              <i class="fas fa-arrow-down me-2"></i> Inward
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('outward') }}">
+              <i class="fas fa-arrow-up me-2"></i> Outward
+            </a>
+          </li>
+          <li class="nav-item mt-3">
+            <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+              <i class="fas fa-sign-out-alt me-2"></i> Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Top Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+          <button
+            class="navbar-toggler d-md-none"
+            type="button"
+            onclick="toggleSidebar()"
+          >
+            <i class="fas fa-bars"></i>
+          </button>
+          <span class="navbar-brand mb-0 h1"
+            >{% block page_title %}Corn Trading System{% endblock %}</span
+          >
+          <div class="navbar-nav ms-auto">
+            <span class="navbar-text">Welcome, {{ session.username }}!</span>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Page Content -->
+      <div class="container-fluid p-4">
+        {% with messages = get_flashed_messages() %} {% if messages %} {% for
+        message in messages %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+        {% endfor %} {% endif %} {% endwith %} {% block content %}{% endblock %}
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+      function toggleSidebar() {
+        document.getElementById("sidebar").classList.toggle("show");
+      }
+
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener("click", function (event) {
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.querySelector(".navbar-toggler");
+
+        if (
+          !sidebar.contains(event.target) &&
+          !toggleBtn.contains(event.target)
+        ) {
+          sidebar.classList.remove("show");
+        }
+      });
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

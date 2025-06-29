@@ -1,0 +1,169 @@
+{% extends "base.html" %} {% block page_title %}Buyers Management{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Buyers</h2>
+  <div class="d-flex gap-2">
+    <div id="normal-mode-buttons">
+      <button id="select-btn" class="btn btn-secondary">
+        <i class="fas fa-check-square"></i> Select
+      </button>
+      <a href="{{ url_for('add_buyer') }}" class="btn btn-success"
+        ><i class="fas fa-plus"></i> Add Buyer</a
+      >
+    </div>
+    <div id="selection-mode-buttons" style="display: none">
+      <button id="delete-selected-btn" class="btn btn-danger">
+        <i class="fas fa-trash-alt"></i> Delete Selected
+      </button>
+      <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th class="selection-control" style="display: none; width: 1%">
+              <input type="checkbox" id="select-all-checkbox" />
+            </th>
+            <th>Name</th>
+            <th>Mobile</th>
+            <th>Place</th>
+            <th>Business Type</th>
+            <th>Joined</th>
+            <th class="actions-header">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for buyer in buyers %}
+          <tr>
+            <td class="selection-control" style="display: none">
+              <input
+                type="checkbox"
+                class="record-checkbox"
+                value="{{ buyer.id }}"
+              />
+            </td>
+            <td>{{ buyer.name }}</td>
+            <td>{{ buyer.mobile }}</td>
+            <td>{{ buyer.place }}</td>
+            <td>{{ buyer.business_type or '-' }}</td>
+            <td>
+              {{ buyer.created_at.split(' ')[0] if buyer.created_at else '-' }}
+            </td>
+            <td class="actions-cell">
+              <a
+                href="{{ url_for('edit_buyer', id=buyer.id) }}"
+                class="btn btn-sm btn-warning"
+                >Edit</a
+              >
+              <form
+                method="POST"
+                action="{{ url_for('delete_buyer', id=buyer.id) }}"
+                style="display: inline"
+              >
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-danger"
+                  onclick="return confirm('Are you sure?');"
+                >
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // --- Get UI elements ---
+    const selectBtn = document.getElementById("select-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+    const deleteSelectedBtn = document.getElementById("delete-selected-btn");
+    const selectAllCheckbox = document.getElementById("select-all-checkbox");
+    const recordCheckboxes = document.querySelectorAll(".record-checkbox");
+    const normalModeButtons = document.getElementById("normal-mode-buttons");
+    const selectionModeButtons = document.getElementById(
+      "selection-mode-buttons"
+    );
+    const selectionControls = document.querySelectorAll(".selection-control");
+    const actionsHeader = document.querySelector(".actions-header");
+    const actionsCells = document.querySelectorAll(".actions-cell");
+
+    // --- Function to toggle selection mode ---
+    function toggleSelectionMode(enable) {
+      if (enable) {
+        normalModeButtons.style.display = "none";
+        selectionModeButtons.style.display = "flex";
+        actionsHeader.style.display = "none";
+        selectionControls.forEach((el) => (el.style.display = ""));
+        actionsCells.forEach((el) => (el.style.display = "none"));
+      } else {
+        normalModeButtons.style.display = "flex";
+        selectionModeButtons.style.display = "none";
+        actionsHeader.style.display = "";
+        selectionControls.forEach((el) => (el.style.display = "none"));
+        actionsCells.forEach((el) => (el.style.display = ""));
+        // Uncheck all checkboxes when exiting selection mode
+        selectAllCheckbox.checked = false;
+        recordCheckboxes.forEach((cb) => (cb.checked = false));
+      }
+    }
+
+    // --- Event Listeners ---
+    selectBtn.addEventListener("click", () => toggleSelectionMode(true));
+    cancelBtn.addEventListener("click", () => toggleSelectionMode(false));
+
+    selectAllCheckbox.addEventListener("change", function () {
+      recordCheckboxes.forEach((checkbox) => {
+        checkbox.checked = this.checked;
+      });
+    });
+
+    deleteSelectedBtn.addEventListener("click", function () {
+      const selectedIds = Array.from(recordCheckboxes)
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.value);
+
+      if (selectedIds.length === 0) {
+        alert("Please select at least one buyer to delete.");
+        return;
+      }
+
+      if (
+        confirm(
+          `Are you sure you want to delete ${selectedIds.length} selected buyer(s)?`
+        )
+      ) {
+        fetch("/delete_buyers_batch", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ids: selectedIds }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              window.location.reload();
+            } else {
+              alert("Error: " + data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Fetch error:", error);
+            alert("An unexpected error occurred.");
+          });
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %} {% block page_title %}Add Inward Transaction{%
+endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h5>Add Inward Transaction (From Farmer)</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="farmer_id" class="form-label"
+                  >Select Farmer *</label
+                >
+                <select
+                  class="form-control"
+                  id="farmer_id"
+                  name="farmer_id"
+                  required
+                >
+                  <option value="">Choose farmer...</option>
+                  {% for farmer in farmers %}
+                  <option value="{{ farmer.id }}">
+                    {{ farmer.name }} - {{ farmer.mobile }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="transaction_date" class="form-label"
+                  >Transaction Date *</label
+                >
+                <input
+                  type="date"
+                  class="form-control"
+                  id="transaction_date"
+                  name="transaction_date"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="weight_tons" class="form-label"
+                  >Weight (Tons) *</label
+                >
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="weight_tons"
+                  name="weight_tons"
+                  required
+                />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="market_price" class="form-label"
+                  >Market Price (₹ per Ton) *</label
+                >
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="market_price"
+                  name="market_price"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="confirmed_amount" class="form-label"
+              >Confirmed Amount (₹)</label
+            >
+            <input
+              type="number"
+              step="0.01"
+              class="form-control"
+              id="confirmed_amount"
+              name="confirmed_amount"
+              readonly
+            />
+          </div>
+
+          <div class="mb-3">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea
+              class="form-control"
+              id="notes"
+              name="notes"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-warning">
+              Add Transaction
+            </button>
+            <a href="{{ url_for('inward') }}" class="btn btn-secondary"
+              >Cancel</a
+            >
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto calculate confirmed amount
+  document
+    .getElementById("weight_tons")
+    .addEventListener("input", calculateAmount);
+  document
+    .getElementById("market_price")
+    .addEventListener("input", calculateAmount);
+
+  function calculateAmount() {
+    const weight =
+      parseFloat(document.getElementById("weight_tons").value) || 0;
+    const price =
+      parseFloat(document.getElementById("market_price").value) || 0;
+    document.getElementById("confirmed_amount").value = (
+      weight * price
+    ).toFixed(2);
+  }
+
+  // Set today's date as default
+  document.getElementById("transaction_date").value = new Date()
+    .toISOString()
+    .split("T")[0];
+</script>
+{% endblock %}

@@ -1,304 +1,701 @@
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
-from flask_cors import CORS
-import json
-import os
-from dotenv import load_dotenv
-from datetime import datetime
-import secrets
 
-# Import the authentication module
-from auth import AuthManager, setup_auth_routes, login_required
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+import sqlite3
+import os
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes, allowing your React app to connect
-load_dotenv()
-# Set a secret key for sessions (use environment variable in production)
-app.secret_key = os.getenv('SECRET_KEY')
-API_PREFIX = os.getenv('API_PREFIX', '')
-DATA_FILE = 'data.json'  # Define the JSON file name
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this')
 
-# Initialize authentication manager
-auth_manager = AuthManager(credentials_file='credentials.json', secret_key=app.secret_key)
+# Database configuration
+DATABASE = 'corn_trading.db'
 
-# Setup authentication routes
-setup_auth_routes(app, auth_manager, API_PREFIX)
-
-# --- Data Loading and Saving Functions ---
-def load_data():
-    try:
-        with open(DATA_FILE, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        # If file doesn't exist, return initial structure (or an empty one)
-        # Make sure to create data.json with initial data for first run
-        return {
-            "suppliers": [],
-            "vendors": [],
-            "inwards": [],
-            "outwards": [],
-            "returns": [],
-            "paneer_redirects": [],
-            "_current_id": 100  # Default starting ID if file is truly empty/missing
-        }
-    except json.JSONDecodeError:
-        print(f"Error decoding JSON from {DATA_FILE}. Returning empty structure.")
-        return {
-            "suppliers": [],
-            "vendors": [],
-            "inwards": [],
-            "outwards": [],
-            "returns": [],
-            "paneer_redirects": [],
-            "_current_id": 100
-        }
-
-def save_data(data_to_save):
-    with open(DATA_FILE, 'w') as f:
-        json.dump(data_to_save, f, indent=4)  # Use indent for pretty-printing
-
-# Load data on app startup
-data = load_data()
-# Initialize current_id from loaded data or default
-current_id = data.get('_current_id', 100)  # Use .get() for safety
-
-def get_next_id():
-    global current_id
-    current_id += 1
-    data['_current_id'] = current_id  # Update the ID in the data structure before saving
-    return current_id
-
-def calculate_sales_quantity(outward_item):
-    return outward_item['quantity'] - outward_item['returnedQuantity']
-
-# --- Main Routes ---
-@app.route('/')
-def home():
-    """Main page - show login if not authenticated, redirect to dashboard if authenticated"""
-    user = auth_manager.get_current_user_from_session()
-    if user:
-        return redirect(url_for('dashboard'))
+def init_db():
+    """Initialize the database with required tables"""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
     
-    print("Serving index.html")
-    return render_template("index.html", api_prefix=API_PREFIX)
+    # Admin user table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Farmers table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS farmers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            mobile TEXT UNIQUE NOT NULL,
+            place TEXT NOT NULL,
+            acres_owned REAL,
+            acres_cultivated REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Buyers table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS buyers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            mobile TEXT UNIQUE NOT NULL,
+            place TEXT NOT NULL,
+            business_type TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Inward transactions (from farmers)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS inward_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            farmer_id INTEGER NOT NULL,
+            weight_tons REAL NOT NULL,
+            market_price REAL NOT NULL,
+            confirmed_amount REAL NOT NULL,
+            transaction_date DATE NOT NULL,
+            payment_status TEXT DEFAULT 'Pending',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (farmer_id) REFERENCES farmers (id)
+        )
+    ''')
+    
+    # Outward transactions (to buyers)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS outward_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            buyer_id INTEGER NOT NULL,
+            weight_tons REAL NOT NULL,
+            selling_price REAL NOT NULL,
+            total_amount REAL NOT NULL,
+            transaction_date DATE NOT NULL,
+            payment_status TEXT DEFAULT 'Pending',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (buyer_id) REFERENCES buyers (id)
+        )
+    ''')
+    
+    # Create default admin user if not exists
+    cursor.execute('SELECT COUNT(*) FROM admin_users')
+    if cursor.fetchone()[0] == 0:
+        password_hash = generate_password_hash('admin123')
+        cursor.execute('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)', 
+                      ('admin', password_hash))
+    
+    conn.commit()
+    conn.close()
+
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Routes
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM admin_users WHERE username = ?', (username,)).fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid username or password')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/dashboard')
-@login_required(auth_manager)
-def dashboard(user):
-    """Dashboard page - requires authentication"""
-    return render_template('dashboard.html', user=user, api_prefix=API_PREFIX)
+@login_required
+def dashboard():
+    conn = get_db_connection()
+    
+    # Get dashboard statistics
+    total_farmers = conn.execute('SELECT COUNT(*) as count FROM farmers').fetchone()['count']
+    total_buyers = conn.execute('SELECT COUNT(*) as count FROM buyers').fetchone()['count']
+    
+    # Recent inward transactions
+    recent_inward = conn.execute('''
+        SELECT i.*, f.name as farmer_name 
+        FROM inward_transactions i 
+        JOIN farmers f ON i.farmer_id = f.id 
+        ORDER BY i.created_at DESC 
+        LIMIT 5
+    ''').fetchall()
+    
+    # Recent outward transactions
+    recent_outward = conn.execute('''
+        SELECT o.*, b.name as buyer_name 
+        FROM outward_transactions o 
+        JOIN buyers b ON o.buyer_id = b.id 
+        ORDER BY o.created_at DESC 
+        LIMIT 5
+    ''').fetchall()
+    
+    # Pending payments
+    pending_inward = conn.execute('''
+        SELECT SUM(confirmed_amount) as total 
+        FROM inward_transactions 
+        WHERE payment_status = "Pending"
+    ''').fetchone()['total'] or 0
+    
+    pending_outward = conn.execute('''
+        SELECT SUM(total_amount) as total 
+        FROM outward_transactions 
+        WHERE payment_status = "Pending"
+    ''').fetchone()['total'] or 0
+    
+    conn.close()
+    
+    return render_template('dashboard.html', 
+                         total_farmers=total_farmers,
+                         total_buyers=total_buyers,
+                         recent_inward=recent_inward,
+                         recent_outward=recent_outward,
+                         pending_inward=pending_inward,
+                         pending_outward=pending_outward)
 
-# Dashboard route is already defined in auth.py setup_auth_routes function
-@app.route('/api/suppliers', methods=['GET'])
-def get_suppliers():
-    return jsonify([
-        {"id": 1, "name": "Supplier A"},
-        {"id": 2, "name": "Supplier B"}
-    ])
+@app.route('/farmers')
+@login_required
+def farmers():
+    conn = get_db_connection()
+    farmers = conn.execute('SELECT * FROM farmers ORDER BY created_at DESC').fetchall()
+    conn.close()
+    return render_template('farmers.html', farmers=farmers)
 
+@app.route('/add_farmer', methods=['GET', 'POST'])
+@login_required
+def add_farmer():
+    if request.method == 'POST':
+        name = request.form['name']
+        mobile = request.form['mobile']
+        place = request.form['place']
+        acres_owned = request.form.get('acres_owned', '')
+        acres_cultivated = request.form.get('acres_cultivated', '')
+        
+        conn = get_db_connection()
+        try:
+            conn.execute('''
+                INSERT INTO farmers (name, mobile, place, acres_owned, acres_cultivated)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name, mobile, place, 
+                 float(acres_owned) if acres_owned else None,
+                 float(acres_cultivated) if acres_cultivated else None))
+            conn.commit()
+            flash('Farmer added successfully!')
+            return redirect(url_for('farmers'))
+        except sqlite3.IntegrityError:
+            flash('Mobile number already exists!')
+        except Exception as e:
+            flash(f'Error adding farmer: {str(e)}')
+        finally:
+            conn.close()
+    
+    return render_template('add_farmer.html')
 
-# --- Protected API Endpoints (require authentication) ---
-@app.route('/<resource_name>', methods=['GET'])
-@login_required(auth_manager)
-def get_all_resources(user, resource_name):
-    """Get all resources - requires authentication"""
-    resource_key = resource_name.replace('-', '_')  # <-- THIS IS THE KEY PART
-    if resource_key in data:
-        return jsonify(data[resource_key])
-    return jsonify({"error": "Resource not found"}), 404
+@app.route('/edit_farmer/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_farmer(id):
+    conn = get_db_connection()
+    farmer = conn.execute('SELECT * FROM farmers WHERE id = ?', (id,)).fetchone()
 
-# Suppliers
-@app.route('/suppliers', methods=['POST'])
-@login_required(auth_manager)
-def add_supplier(user):
-    new_supplier = request.json
-    new_supplier['id'] = get_next_id()
-    new_supplier['created_by'] = user['id']  # Track who created it
-    new_supplier['created_at'] = datetime.now().isoformat()
-    data['suppliers'].append(new_supplier)
-    save_data(data)  # Save after adding
-    return jsonify(new_supplier), 201
+    if request.method == 'POST':
+        name = request.form['name']
+        mobile = request.form['mobile']
+        place = request.form['place']
+        acres_owned = request.form.get('acres_owned', '')
+        acres_cultivated = request.form.get('acres_cultivated', '')
 
-@app.route('/suppliers/<int:supplier_id>', methods=['PUT'])
-@login_required(auth_manager)
-def update_supplier(user, supplier_id):
-    updated_data = request.json
-    found = False
-    for i, s in enumerate(data['suppliers']):
-        if s['id'] == supplier_id:
-            data['suppliers'][i].update(updated_data)
-            data['suppliers'][i]['id'] = supplier_id  # Ensure ID doesn't change
-            data['suppliers'][i]['updated_by'] = user['id']  # Track who updated it
-            data['suppliers'][i]['updated_at'] = datetime.now().isoformat()
-            updated_resource = data['suppliers'][i]
-            found = True
-            break
-    if found:
-        save_data(data)  # Save after updating
-        return jsonify(updated_resource)
-    return jsonify({"error": "Supplier not found"}), 404
+        try:
+            conn.execute('''
+                UPDATE farmers 
+                SET name = ?, mobile = ?, place = ?, acres_owned = ?, acres_cultivated = ?
+                WHERE id = ?
+            ''', (name, mobile, place, 
+                  float(acres_owned) if acres_owned else None,
+                  float(acres_cultivated) if acres_cultivated else None,
+                  id))
+            conn.commit()
+            flash('Farmer details updated successfully!')
+            return redirect(url_for('farmers'))
+        except sqlite3.IntegrityError:
+            flash('Mobile number already exists for another farmer!')
+        except Exception as e:
+            flash(f'Error updating farmer: {str(e)}')
+        finally:
+            conn.close()
+    
+    conn.close()
+    if farmer is None:
+        flash('Farmer not found!')
+        return redirect(url_for('farmers'))
+        
+    return render_template('edit_farmer.html', farmer=farmer)
 
-@app.route('/suppliers/<int:supplier_id>', methods=['DELETE'])
-@login_required(auth_manager)
-def delete_supplier(user, supplier_id):
-    initial_len = len(data['suppliers'])
-    data['suppliers'] = [s for s in data['suppliers'] if s['id'] != supplier_id]
-    if len(data['suppliers']) < initial_len:
-        save_data(data)  # Save after deleting
-        return jsonify({"message": "Supplier deleted"}), 200
-    return jsonify({"error": "Supplier not found"}), 404
+@app.route('/delete_farmer/<int:id>', methods=['POST'])
+@login_required
+def delete_farmer(id):
+    conn = get_db_connection()
+    try:
+        # Check if the farmer has associated transactions
+        transactions = conn.execute('SELECT COUNT(*) FROM inward_transactions WHERE farmer_id = ?', (id,)).fetchone()[0]
+        if transactions > 0:
+            flash('Cannot delete farmer. They have existing inward transactions.', 'error')
+            return redirect(url_for('farmers'))
 
-# Vendors
-@app.route('/vendors', methods=['POST'])
-@login_required(auth_manager)
-def add_vendor(user):
-    new_vendor = request.json
-    new_vendor['id'] = get_next_id()
-    new_vendor['created_by'] = user['id']
-    new_vendor['created_at'] = datetime.now().isoformat()
-    data['vendors'].append(new_vendor)
-    save_data(data)  # Save after adding
-    return jsonify(new_vendor), 201
+        conn.execute('DELETE FROM farmers WHERE id = ?', (id,))
+        conn.commit()
+        flash('Farmer deleted successfully!')
+    except Exception as e:
+        flash(f'Error deleting farmer: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('farmers'))
 
-@app.route('/vendors/<int:vendor_id>', methods=['PUT'])
-@login_required(auth_manager)
-def update_vendor(user, vendor_id):
-    updated_data = request.json
-    found = False
-    for i, v in enumerate(data['vendors']):
-        if v['id'] == vendor_id:
-            data['vendors'][i].update(updated_data)
-            data['vendors'][i]['id'] = vendor_id
-            data['vendors'][i]['updated_by'] = user['id']
-            data['vendors'][i]['updated_at'] = datetime.now().isoformat()
-            updated_resource = data['vendors'][i]
-            found = True
-            break
-    if found:
-        save_data(data)  # Save after updating
-        return jsonify(updated_resource)
-    return jsonify({"error": "Vendor not found"}), 404
+@app.route('/delete_farmers_batch', methods=['POST'])
+@login_required
+def delete_farmers_batch():
+    data = request.get_json()
+    ids_to_delete = data.get('ids', [])
 
-@app.route('/vendors/<int:vendor_id>', methods=['DELETE'])
-@login_required(auth_manager)
-def delete_vendor(user, vendor_id):
-    initial_len = len(data['vendors'])
-    data['vendors'] = [v for v in data['vendors'] if v['id'] != vendor_id]
-    if len(data['vendors']) < initial_len:
-        save_data(data)  # Save after deleting
-        return jsonify({"message": "Vendor deleted"}), 200
-    return jsonify({"error": "Vendor not found"}), 404
+    if not ids_to_delete:
+        return jsonify({'success': False, 'message': 'No farmers selected.'}), 400
 
-# Inwards
-@app.route('/inwards', methods=['POST'])
-@login_required(auth_manager)
-def add_inward(user):
-    new_inward = request.json
-    new_inward['id'] = get_next_id()
-    new_inward['quantity'] = float(new_inward['quantity'])
-    new_inward['fat'] = float(new_inward['fat'])
-    new_inward['snf'] = float(new_inward['snf'])
-    new_inward['created_by'] = user['id']
-    new_inward['created_at'] = datetime.now().isoformat()
-    data['inwards'].append(new_inward)
-    save_data(data)  # Save after adding
-    return jsonify(new_inward), 201
+    conn = get_db_connection()
+    try:
+        # Data Integrity Check: Ensure none of the farmers have transactions
+        placeholders = ','.join(['?'] * len(ids_to_delete))
+        query = f'SELECT COUNT(*) FROM inward_transactions WHERE farmer_id IN ({placeholders})'
+        transaction_count = conn.execute(query, ids_to_delete).fetchone()[0]
 
-# Outwards
-@app.route('/outwards', methods=['POST'])
-@login_required(auth_manager)
-def add_outward(user):
-    new_outward = request.json
-    new_outward['id'] = get_next_id()
-    new_outward['returnedQuantity'] = 0.0
-    new_outward['salesQuantity'] = None
-    new_outward['status'] = "Pending"
-    new_outward['quantity'] = float(new_outward['quantity'])
-    new_outward['created_by'] = user['id']
-    new_outward['created_at'] = datetime.now().isoformat()
-    data['outwards'].append(new_outward)
-    save_data(data)  # Save after adding
-    return jsonify(new_outward), 201
+        if transaction_count > 0:
+            flash(f'Deletion failed. One or more selected farmers have existing transactions.', 'error')
+            return jsonify({'success': False, 'message': 'Cannot delete farmers with transactions.'}), 409
 
-# Returns - This endpoint should also update the corresponding outward
-@app.route('/returns', methods=['POST'])
-@login_required(auth_manager)
-def add_return(user):
-    return_data = request.json
-    outward_id_to_update = return_data['outwardEntryId']
-    return_quantity = float(return_data['quantity'])
+        # Proceed with deletion
+        conn.execute(f'DELETE FROM farmers WHERE id IN ({placeholders})', ids_to_delete)
+        conn.commit()
+        flash(f'Successfully deleted {len(ids_to_delete)} farmer(s).')
+        return jsonify({'success': True})
+    except Exception as e:
+        flash(f'An error occurred during batch deletion: {str(e)}', 'error')
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
 
-    updated_outward_item = None
-    for i, outward_item in enumerate(data['outwards']):
-        if outward_item['id'] == outward_id_to_update:
-            outward_item['returnedQuantity'] += return_quantity
+@app.route('/buyers')
+@login_required
+def buyers():
+    conn = get_db_connection()
+    buyers = conn.execute('SELECT * FROM buyers ORDER BY created_at DESC').fetchall()
+    conn.close()
+    return render_template('buyers.html', buyers=buyers)
+
+@app.route('/add_buyer', methods=['GET', 'POST'])
+@login_required
+def add_buyer():
+    if request.method == 'POST':
+        name = request.form['name']
+        mobile = request.form['mobile']
+        place = request.form['place']
+        business_type = request.form.get('business_type', '')
+        
+        conn = get_db_connection()
+        try:
+            conn.execute('''
+                INSERT INTO buyers (name, mobile, place, business_type)
+                VALUES (?, ?, ?, ?)
+            ''', (name, mobile, place, business_type))
+            conn.commit()
+            flash('Buyer added successfully!')
+            return redirect(url_for('buyers'))
+        except sqlite3.IntegrityError:
+            flash('Mobile number already exists!')
+        except Exception as e:
+            flash(f'Error adding buyer: {str(e)}')
+        finally:
+            conn.close()
+    
+    return render_template('add_buyer.html')
+
+@app.route('/edit_buyer/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_buyer(id):
+    conn = get_db_connection()
+    buyer = conn.execute('SELECT * FROM buyers WHERE id = ?', (id,)).fetchone()
+
+    if request.method == 'POST':
+        name = request.form['name']
+        mobile = request.form['mobile']
+        place = request.form['place']
+        business_type = request.form.get('business_type', '')
+
+        try:
+            conn.execute('''
+                UPDATE buyers 
+                SET name = ?, mobile = ?, place = ?, business_type = ?
+                WHERE id = ?
+            ''', (name, mobile, place, business_type, id))
+            conn.commit()
+            flash('Buyer details updated successfully!')
+            return redirect(url_for('buyers'))
+        except sqlite3.IntegrityError:
+            flash('Mobile number already exists for another buyer!')
+        except Exception as e:
+            flash(f'Error updating buyer: {str(e)}')
+        finally:
+            conn.close()
+    
+    conn.close()
+    if buyer is None:
+        flash('Buyer not found!')
+        return redirect(url_for('buyers'))
+        
+    return render_template('edit_buyer.html', buyer=buyer)
+
+@app.route('/delete_buyer/<int:id>', methods=['POST'])
+@login_required
+def delete_buyer(id):
+    conn = get_db_connection()
+    try:
+        # Check if the buyer has associated transactions
+        transactions = conn.execute('SELECT COUNT(*) FROM outward_transactions WHERE buyer_id = ?', (id,)).fetchone()[0]
+        if transactions > 0:
+            flash('Cannot delete buyer. They have existing outward transactions.', 'error')
+            return redirect(url_for('buyers'))
+
+        conn.execute('DELETE FROM buyers WHERE id = ?', (id,))
+        conn.commit()
+        flash('Buyer deleted successfully!')
+    except Exception as e:
+        flash(f'Error deleting buyer: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('buyers'))
+
+@app.route('/delete_buyers_batch', methods=['POST'])
+@login_required
+def delete_buyers_batch():
+    data = request.get_json()
+    ids_to_delete = data.get('ids', [])
+
+    if not ids_to_delete:
+        return jsonify({'success': False, 'message': 'No buyers selected.'}), 400
+
+    conn = get_db_connection()
+    try:
+        # Data Integrity Check: Ensure none of the buyers have transactions
+        placeholders = ','.join(['?'] * len(ids_to_delete))
+        query = f'SELECT COUNT(*) FROM outward_transactions WHERE buyer_id IN ({placeholders})'
+        transaction_count = conn.execute(query, ids_to_delete).fetchone()[0]
+
+        if transaction_count > 0:
+            flash(f'Deletion failed. One or more selected buyers have existing transactions.', 'error')
+            return jsonify({'success': False, 'message': 'Cannot delete buyers with transactions.'}), 409
+
+        # Proceed with deletion
+        conn.execute(f'DELETE FROM buyers WHERE id IN ({placeholders})', ids_to_delete)
+        conn.commit()
+        flash(f'Successfully deleted {len(ids_to_delete)} buyer(s).')
+        return jsonify({'success': True})
+    except Exception as e:
+        flash(f'An error occurred during batch deletion: {str(e)}', 'error')
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/inward')
+@login_required
+def inward():
+    conn = get_db_connection()
+    transactions = conn.execute('''
+        SELECT i.*, f.name as farmer_name, f.mobile as farmer_mobile
+        FROM inward_transactions i 
+        JOIN farmers f ON i.farmer_id = f.id 
+        ORDER BY i.transaction_date DESC
+    ''').fetchall()
+    conn.close()
+    return render_template('inward.html', transactions=transactions)
+
+@app.route('/add_inward', methods=['GET', 'POST'])
+@login_required
+def add_inward():
+    conn = get_db_connection()
+    
+    if request.method == 'POST':
+        farmer_id = request.form['farmer_id']
+        weight_tons = float(request.form['weight_tons'])
+        market_price = float(request.form['market_price'])
+        transaction_date = request.form['transaction_date']
+        notes = request.form.get('notes', '')
+        
+        confirmed_amount = weight_tons * market_price
+        
+        try:
+            conn.execute('''
+                INSERT INTO inward_transactions 
+                (farmer_id, weight_tons, market_price, confirmed_amount, transaction_date, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (farmer_id, weight_tons, market_price, confirmed_amount, transaction_date, notes))
+            conn.commit()
+            flash('Inward transaction added successfully!')
+            return redirect(url_for('inward'))
+        except Exception as e:
+            flash(f'Error adding transaction: {str(e)}')
+    
+    farmers = conn.execute('SELECT * FROM farmers ORDER BY name').fetchall()
+    conn.close()
+    return render_template('add_inward.html', farmers=farmers)
+
+@app.route('/edit_inward/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_inward(id):
+    conn = get_db_connection()
+    transaction = conn.execute('SELECT * FROM inward_transactions WHERE id = ?', (id,)).fetchone()
+
+    if request.method == 'POST':
+        farmer_id = request.form['farmer_id']
+        weight_tons = float(request.form['weight_tons'])
+        market_price = float(request.form['market_price'])
+        transaction_date = request.form['transaction_date']
+        notes = request.form.get('notes', '')
+        
+        confirmed_amount = weight_tons * market_price
+        
+        try:
+            conn.execute('''
+                UPDATE inward_transactions
+                SET farmer_id = ?, weight_tons = ?, market_price = ?, confirmed_amount = ?, transaction_date = ?, notes = ?
+                WHERE id = ?
+            ''', (farmer_id, weight_tons, market_price, confirmed_amount, transaction_date, notes, id))
+            conn.commit()
+            flash('Inward transaction updated successfully!')
+            return redirect(url_for('inward'))
+        except Exception as e:
+            flash(f'Error updating transaction: {str(e)}')
+        finally:
+            conn.close()
             
-            if outward_item['returnedQuantity'] >= outward_item['quantity'] or return_quantity == 0:
-                outward_item['status'] = "Completed"
-                outward_item['salesQuantity'] = calculate_sales_quantity(outward_item)
-            elif outward_item['returnedQuantity'] > 0:
-                outward_item['status'] = "Partial Return"
-                outward_item['salesQuantity'] = None
+    if transaction is None:
+        flash('Transaction not found!')
+        conn.close()
+        return redirect(url_for('inward'))
+        
+    farmers = conn.execute('SELECT * FROM farmers ORDER BY name').fetchall()
+    conn.close()
+    return render_template('edit_inward.html', transaction=transaction, farmers=farmers)
 
-            updated_outward_item = outward_item  # Reference to the modified item in data list
-            break
+@app.route('/delete_inward/<int:id>', methods=['POST'])
+@login_required
+def delete_inward(id):
+    conn = get_db_connection()
+    try:
+        conn.execute('DELETE FROM inward_transactions WHERE id = ?', (id,))
+        conn.commit()
+        flash('Inward transaction deleted successfully!')
+    except Exception as e:
+        flash(f'Error deleting transaction: {str(e)}', 'error')
+    finally:
+        conn.close()
     
-    if updated_outward_item:
-        return_data['id'] = get_next_id()  # Assign ID to the return record
-        return_data['created_by'] = user['id']
-        return_data['created_at'] = datetime.now().isoformat()
-        data['returns'].append(return_data)
-        save_data(data)  # Save after both return and outward update
-        return jsonify(updated_outward_item), 200
-    return jsonify({"error": "Outward entry not found for return"}), 404
+    return redirect(url_for('inward'))
 
-# Mark Outward as Complete Endpoint
-@app.route('/outwards/<int:outward_id>/complete', methods=['PUT'])
-@login_required(auth_manager)
-def mark_outward_complete(user, outward_id):
-    updated_outward_item = None
-    for i, outward_item in enumerate(data['outwards']):
-        if outward_item['id'] == outward_id:
-            outward_item['status'] = "Completed"
-            outward_item['salesQuantity'] = calculate_sales_quantity(outward_item)
-            outward_item['completed_by'] = user['id']
-            outward_item['completed_at'] = datetime.now().isoformat()
-            updated_outward_item = outward_item  # Reference to the modified item in data list
-            break
+@app.route('/delete_inward_batch', methods=['POST'])
+@login_required
+def delete_inward_batch():
+    data = request.get_json()
+    ids_to_delete = data.get('ids', [])
+
+    if not ids_to_delete:
+        return jsonify({'success': False, 'message': 'No transactions selected.'}), 400
+
+    conn = get_db_connection()
+    try:
+        placeholders = ','.join(['?'] * len(ids_to_delete))
+        conn.execute(f'DELETE FROM inward_transactions WHERE id IN ({placeholders})', ids_to_delete)
+        conn.commit()
+        flash(f'Successfully deleted {len(ids_to_delete)} inward transaction(s).')
+        return jsonify({'success': True})
+    except Exception as e:
+        flash(f'An error occurred during batch deletion: {str(e)}', 'error')
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
+        
+@app.route('/outward')
+@login_required
+def outward():
+    conn = get_db_connection()
+    transactions = conn.execute('''
+        SELECT o.*, b.name as buyer_name, b.mobile as buyer_mobile
+        FROM outward_transactions o 
+        JOIN buyers b ON o.buyer_id = b.id 
+        ORDER BY o.transaction_date DESC
+    ''').fetchall()
+    conn.close()
+    return render_template('outward.html', transactions=transactions)
+
+@app.route('/add_outward', methods=['GET', 'POST'])
+@login_required
+def add_outward():
+    conn = get_db_connection()
     
-    if updated_outward_item:
-        save_data(data)  # Save after updating
-        return jsonify(updated_outward_item), 200
-    return jsonify({"error": "Outward entry not found"}), 404
+    if request.method == 'POST':
+        buyer_id = request.form['buyer_id']
+        weight_tons = float(request.form['weight_tons'])
+        selling_price = float(request.form['selling_price'])
+        transaction_date = request.form['transaction_date']
+        notes = request.form.get('notes', '')
+        
+        total_amount = weight_tons * selling_price
+        
+        try:
+            conn.execute('''
+                INSERT INTO outward_transactions 
+                (buyer_id, weight_tons, selling_price, total_amount, transaction_date, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (buyer_id, weight_tons, selling_price, total_amount, transaction_date, notes))
+            conn.commit()
+            flash('Outward transaction added successfully!')
+            return redirect(url_for('outward'))
+        except Exception as e:
+            flash(f'Error adding transaction: {str(e)}')
+    
+    buyers = conn.execute('SELECT * FROM buyers ORDER BY name').fetchall()
+    conn.close()
+    return render_template('add_outward.html', buyers=buyers)
 
-# Paneer Redirects
-@app.route('/paneer-redirects', methods=['POST'])
-@login_required(auth_manager)
-def add_paneer_redirect(user):
-    new_redirect = request.json
-    new_redirect['id'] = get_next_id()
-    new_redirect['quantity'] = float(new_redirect['quantity'])
-    new_redirect['created_by'] = user['id']
-    new_redirect['created_at'] = datetime.now().isoformat()
-    data['paneer_redirects'].append(new_redirect)
-    save_data(data)  # Save after adding
-    return jsonify(new_redirect), 201
+@app.route('/edit_outward/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_outward(id):
+    conn = get_db_connection()
+    transaction = conn.execute('SELECT * FROM outward_transactions WHERE id = ?', (id,)).fetchone()
 
-# Add a route to check authentication status
-@app.route('/api/check-auth', methods=['GET'])
-def check_auth():
-    """Check if user is authenticated"""
-    user = auth_manager.get_current_user_from_session()
-    if user:
-        return jsonify({
-            'authenticated': True,
-            'user': {
-                'id': user['id'],
-                'name': user['name'],
-                'email': user['email']
-            }
-        }), 200
+    if request.method == 'POST':
+        buyer_id = request.form['buyer_id']
+        weight_tons = float(request.form['weight_tons'])
+        selling_price = float(request.form['selling_price'])
+        transaction_date = request.form['transaction_date']
+        notes = request.form.get('notes', '')
+        
+        total_amount = weight_tons * selling_price
+        
+        try:
+            conn.execute('''
+                UPDATE outward_transactions
+                SET buyer_id = ?, weight_tons = ?, selling_price = ?, total_amount = ?, transaction_date = ?, notes = ?
+                WHERE id = ?
+            ''', (buyer_id, weight_tons, selling_price, total_amount, transaction_date, notes, id))
+            conn.commit()
+            flash('Outward transaction updated successfully!')
+            return redirect(url_for('outward'))
+        except Exception as e:
+            flash(f'Error updating transaction: {str(e)}')
+        finally:
+            conn.close()
+
+    if transaction is None:
+        flash('Transaction not found!')
+        conn.close()
+        return redirect(url_for('outward'))
+
+    buyers = conn.execute('SELECT * FROM buyers ORDER BY name').fetchall()
+    conn.close()
+    return render_template('edit_outward.html', transaction=transaction, buyers=buyers)
+
+@app.route('/delete_outward/<int:id>', methods=['POST'])
+@login_required
+def delete_outward(id):
+    conn = get_db_connection()
+    try:
+        conn.execute('DELETE FROM outward_transactions WHERE id = ?', (id,))
+        conn.commit()
+        flash('Outward transaction deleted successfully!')
+    except Exception as e:
+        flash(f'Error deleting transaction: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('outward'))
+
+@app.route('/delete_outward_batch', methods=['POST'])
+@login_required
+def delete_outward_batch():
+    data = request.get_json()
+    ids_to_delete = data.get('ids', [])
+
+    if not ids_to_delete:
+        return jsonify({'success': False, 'message': 'No transactions selected.'}), 400
+
+    conn = get_db_connection()
+    try:
+        placeholders = ','.join(['?'] * len(ids_to_delete))
+        conn.execute(f'DELETE FROM outward_transactions WHERE id IN ({placeholders})', ids_to_delete)
+        conn.commit()
+        flash(f'Successfully deleted {len(ids_to_delete)} outward transaction(s).')
+        return jsonify({'success': True})
+    except Exception as e:
+        flash(f'An error occurred during batch deletion: {str(e)}', 'error')
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/update_payment_status', methods=['POST'])
+@login_required
+def update_payment_status():
+    transaction_id = request.form['transaction_id']
+    transaction_type = request.form['transaction_type']
+    status = request.form['status']
+    
+    conn = get_db_connection()
+    
+    if transaction_type == 'inward':
+        conn.execute('UPDATE inward_transactions SET payment_status = ? WHERE id = ?', 
+                    (status, transaction_id))
     else:
-        return jsonify({'authenticated': False}), 200
+        conn.execute('UPDATE outward_transactions SET payment_status = ? WHERE id = ?', 
+                    (status, transaction_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    init_db()
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

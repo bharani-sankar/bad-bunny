@@ -12,7 +12,7 @@ __pycache__/
 .env.*
 data.json
 credentials.json
-
+corn_trading.db
 # Upload folders
 uploads/
 media/

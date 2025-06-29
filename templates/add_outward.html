@@ -1,0 +1,137 @@
+{% extends "base.html" %} {% block page_title %}Add Outward Transaction{%
+endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h5>Add Outward Transaction (To Buyer)</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="buyer_id" class="form-label">Select Buyer *</label>
+                <select
+                  class="form-control"
+                  id="buyer_id"
+                  name="buyer_id"
+                  required
+                >
+                  <option value="">Choose buyer...</option>
+                  {% for buyer in buyers %}
+                  <option value="{{ buyer.id }}">
+                    {{ buyer.name }} - {{ buyer.mobile }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="transaction_date" class="form-label"
+                  >Transaction Date *</label
+                >
+                <input
+                  type="date"
+                  class="form-control"
+                  id="transaction_date"
+                  name="transaction_date"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="weight_tons" class="form-label"
+                  >Weight (Tons) *</label
+                >
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="weight_tons"
+                  name="weight_tons"
+                  required
+                />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="selling_price" class="form-label"
+                  >Selling Price (₹ per Ton) *</label
+                >
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="selling_price"
+                  name="selling_price"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="total_amount" class="form-label"
+              >Total Amount (₹)</label
+            >
+            <input
+              type="number"
+              step="0.01"
+              class="form-control"
+              id="total_amount"
+              name="total_amount"
+              readonly
+            />
+          </div>
+
+          <div class="mb-3">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea
+              class="form-control"
+              id="notes"
+              name="notes"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-info">Add Transaction</button>
+            <a href="{{ url_for('outward') }}" class="btn btn-secondary"
+              >Cancel</a
+            >
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Auto calculate total amount
+  document
+    .getElementById("weight_tons")
+    .addEventListener("input", calculateAmount);
+  document
+    .getElementById("selling_price")
+    .addEventListener("input", calculateAmount);
+
+  function calculateAmount() {
+    const weight =
+      parseFloat(document.getElementById("weight_tons").value) || 0;
+    const price =
+      parseFloat(document.getElementById("selling_price").value) || 0;
+    document.getElementById("total_amount").value = (weight * price).toFixed(2);
+  }
+
+  // Set today's date as default
+  document.getElementById("transaction_date").value = new Date()
+    .toISOString()
+    .split("T")[0];
+</script>
+{% endblock %}

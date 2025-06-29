@@ -1,0 +1,214 @@
+{% extends "base.html" %} {% block page_title %}Inward Transactions{% endblock
+%} {% block content %}
+<!-- A simple CSS style to reliably hide elements -->
+<style>
+  .hidden {
+    display: none !important;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Inward Transactions (From Farmers)</h2>
+  <div class="d-flex gap-2">
+    <!-- Normal buttons are visible by default -->
+    <div id="normal-mode-buttons" class="d-flex gap-2">
+      <button id="select-btn" class="btn btn-secondary">
+        <i class="fas fa-check-square"></i> Select
+      </button>
+      <a href="{{ url_for('add_inward') }}" class="btn btn-warning"
+        ><i class="fas fa-plus"></i> Add Inward</a
+      >
+    </div>
+    <!-- Selection buttons start with the 'hidden' class -->
+    <div id="selection-mode-buttons" class="d-flex gap-2 hidden">
+      <button id="delete-selected-btn" class="btn btn-danger">
+        <i class="fas fa-trash-alt"></i> Delete Selected
+      </button>
+      <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <!-- Checkbox column starts hidden -->
+            <th class="selection-control hidden" style="width: 1%">
+              <input type="checkbox" id="select-all-checkbox" />
+            </th>
+            <th>Date</th>
+            <th>Farmer</th>
+            <th>Mobile</th>
+            <th>Weight (Tons)</th>
+            <th>Market Price (₹/Ton)</th>
+            <th>Confirmed Amount (₹)</th>
+            <th>Payment Status</th>
+            <th>Notes</th>
+            <th class="actions-header">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for transaction in transactions %}
+          <tr>
+            <!-- Checkbox cell starts hidden -->
+            <td class="selection-control hidden">
+              <input
+                type="checkbox"
+                class="record-checkbox"
+                value="{{ transaction.id }}"
+              />
+            </td>
+            <td>{{ transaction.transaction_date }}</td>
+            <td>{{ transaction.farmer_name }}</td>
+            <td>{{ transaction.farmer_mobile }}</td>
+            <td>{{ transaction.weight_tons }}</td>
+            <td>₹{{ "%.2f"|format(transaction.market_price) }}</td>
+            <td>₹{{ "%.2f"|format(transaction.confirmed_amount) }}</td>
+            <td>
+              <span
+                class="badge {% if transaction.payment_status == 'Paid' %}bg-success{% else %}bg-secondary text-dark{% endif %}"
+              >
+                {{ transaction.payment_status }}
+              </span>
+            </td>
+            <td>{{ transaction.notes or '-' }}</td>
+            <td class="actions-cell d-flex gap-1">
+              <a
+                href="{{ url_for('edit_inward', id=transaction.id) }}"
+                class="btn btn-sm btn-primary"
+                >Edit</a
+              >
+              <form
+                method="POST"
+                action="{{ url_for('delete_inward', id=transaction.id) }}"
+                style="display: inline"
+              >
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-danger"
+                  onclick="return confirm('Are you sure?');"
+                >
+                  Delete
+                </button>
+              </form>
+              {% if transaction.payment_status == 'Pending' %}
+              <button
+                class="btn btn-sm btn-success"
+                onclick="updatePaymentStatus({{ transaction.id }}, 'inward', 'Paid')"
+              >
+                Mark Paid
+              </button>
+              {% else %}
+              <button
+                class="btn btn-sm btn-secondary"
+                onclick="updatePaymentStatus({{ transaction.id }}, 'inward', 'Pending')"
+              >
+                Mark Pending
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="text-center">
+              No inward transactions found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  function updatePaymentStatus(id, type, status) {
+    fetch("/update_payment_status", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `transaction_id=${id}&transaction_type=${type}&status=${status}`,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) location.reload();
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // --- Get UI elements ---
+    const selectBtn = document.getElementById("select-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+    const deleteSelectedBtn = document.getElementById("delete-selected-btn");
+    const selectAllCheckbox = document.getElementById("select-all-checkbox");
+    const recordCheckboxes = document.querySelectorAll(".record-checkbox");
+    const normalModeButtons = document.getElementById("normal-mode-buttons");
+    const selectionModeButtons = document.getElementById(
+      "selection-mode-buttons"
+    );
+    const selectionControls = document.querySelectorAll(".selection-control");
+    const actionsHeader = document.querySelector(".actions-header");
+    const actionsCells = document.querySelectorAll(".actions-cell");
+
+    // --- NEW: Simplified function to toggle UI modes using CSS classes ---
+    function toggleSelectionMode(isSelectionActive) {
+      normalModeButtons.classList.toggle("hidden", isSelectionActive);
+      selectionModeButtons.classList.toggle("hidden", !isSelectionActive);
+
+      selectionControls.forEach((el) =>
+        el.classList.toggle("hidden", !isSelectionActive)
+      );
+      if (actionsHeader)
+        actionsHeader.classList.toggle("hidden", isSelectionActive);
+      actionsCells.forEach((el) =>
+        el.classList.toggle("hidden", isSelectionActive)
+      );
+
+      if (!isSelectionActive) {
+        selectAllCheckbox.checked = false;
+        recordCheckboxes.forEach((cb) => (cb.checked = false));
+      }
+    }
+
+    // --- Event Listeners ---
+    selectBtn.addEventListener("click", () => toggleSelectionMode(true));
+    cancelBtn.addEventListener("click", () => toggleSelectionMode(false));
+
+    selectAllCheckbox.addEventListener("change", function () {
+      recordCheckboxes.forEach((checkbox) => (checkbox.checked = this.checked));
+    });
+
+    deleteSelectedBtn.addEventListener("click", function () {
+      const selectedIds = Array.from(recordCheckboxes)
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.value);
+      if (selectedIds.length === 0) {
+        alert("Please select at least one transaction to delete.");
+        return;
+      }
+      if (
+        confirm(
+          `Are you sure you want to delete ${selectedIds.length} transaction(s)?`
+        )
+      ) {
+        fetch("/delete_inward_batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: selectedIds }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) window.location.reload();
+            else
+              alert(
+                "Error: " + (data.message || "Could not complete batch delete.")
+              );
+          })
+          .catch((err) => alert("An unexpected error occurred."));
+      }
+    });
+  });
+</script>
+{% endblock %}
