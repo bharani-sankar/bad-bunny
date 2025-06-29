@@ -104,7 +104,7 @@
       /* Ensure the grid containers don't expand beyond viewport */
       .charts-grid {
         min-height: 400px;
-        max-height: 500px;
+        /* max-height: 500px; */
       }
     </style>
   </head>
@@ -381,9 +381,9 @@
           </a>
           <a
             href="{{ url_for('add_outward') }}"
-            class="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-lg text-center transition duration-200"
+            class="bg-red-500 hover:bg-red-600 text-white p-4 rounded-lg text-center transition duration-200"
           >
-            <i class="fas fa-arrow-up text-2xl mb-2"></i>
+            <i class="fas fa-arrow-down text-2xl mb-2"></i>
             <p class="text-sm font-medium">Add Outward</p>
           </a>
         </div>
