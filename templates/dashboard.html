@@ -115,18 +115,24 @@
         <div class="flex justify-between items-center py-4">
           <div class="flex items-center space-x-4">
             <i class="text-2xl">🌽</i>
-            <h1 class="text-xl font-bold text-gray-800">Corn Trading System</h1>
+            <h1 class="text-xl font-bold text-gray-800 hidden md:block">
+              Corn Trading System
+            </h1>
           </div>
-          <div class="flex items-center space-x-4">
-            <span class="text-gray-600"
-              >Welcome,
-              <span class="font-semibold">{{ session.username }}</span></span
-            >
+
+          <div class="flex items-center space-x-2 sm:space-x-4">
+            <span class="text-gray-600">
+              <span class="hidden sm:inline">Welcome, </span>
+              <span class="font-semibold">{{ session.username }}</span>
+            </span>
+
             <a
               href="{{ url_for('logout') }}"
-              class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-200"
+              title="Logout"
+              class="bg-red-500 hover:bg-red-600 text-white p-2 md:px-4 md:py-2 rounded-lg transition duration-200 flex items-center"
             >
-              <i class="fas fa-sign-out-alt mr-2"></i>Logout
+              <i class="fas fa-sign-out-alt md:mr-2"></i>
+              <span class="hidden md:inline">Logout</span>
             </a>
           </div>
         </div>
